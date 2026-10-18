@@ -1,36 +1,47 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SayLess
 
-## Getting Started
+Plataforma de invitaciones digitales con confirmación de asistencia (RSVP). Cada cliente crea y edita sus eventos
+por su cuenta, paga al publicar y administra a sus invitados.
 
-First, run the development server:
+Next.js 16 · Supabase (Postgres, Auth, Storage) · Stripe · Tailwind 4.
+
+## Puesta en marcha
 
 ```bash
+npm install
+cp .env.local.example .env.local   # o crea .env.local con las variables de abajo
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Variables de entorno
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Variable | Para qué |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Cliente de Supabase (sesión del usuario, sujeta a RLS) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Solo servidor: parte pública, webhooks y acciones de operador |
+| `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID`, `STRIPE_WEBHOOK_SECRET` | Cobro al publicar |
+| `NEXT_PUBLIC_SITE_URL` | URL pública (producción), para enlaces de retorno |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Base de datos
 
-## Learn More
+Ejecuta en el SQL Editor de Supabase, **en orden**: `supabase/schema.sql` y luego `001` a `010`.
+`010` requiere activar la extensión `pg_cron`.
 
-To learn more about Next.js, take a look at the following resources:
+### Inicio de sesión sin correo (solo desarrollo)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+node --env-file=.env.local scripts/dev-login-link.mjs tu@correo.com
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Hacerte superadmin
 
-## Deploy on Vercel
+```sql
+update public.profiles set is_superadmin = true where email = 'tu@correo.com';
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Estructura
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `/[slug]` y `/[slug]/[codigo]`: invitación pública y enlace personal de cada invitado.
+- `/app`: panel del cliente (eventos, editor, invitados, colaboradores).
+- `/admin`: panel del operador (clientes, estados, pagos, retención).
+- `src/proxy.ts`: refresca la sesión y protege `/app` y `/admin`.
