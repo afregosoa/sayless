@@ -1,18 +1,20 @@
 -- Evento de PRUEBA para sayless-dev (datos ficticios). NO correr en producción.
 -- Pegar en Supabase > SQL Editor > Run. Se puede correr varias veces: reinicia el evento y sus invitados.
--- Requiere haber corrido schema.sql y las migraciones 001–010 (y 011 si usarás música).
+-- Requiere haber corrido schema.sql y las migraciones 001–015 (la 011 solo si usarás música).
 --
 -- ANTES DE CORRER: cambia el correo de abajo por el correo con el que inicias sesión en la app (sayless-dev).
 -- Debes haber entrado al menos una vez (para que exista tu perfil); si no, el evento se crea sin dueño y
 -- puedes asignarlo después desde /admin.
 --
--- Invitación:  /ana-y-luis        Invitado con código:  /ana-y-luis/FAM001
+-- Invitación:  /ana-y-luis. Cada invitado recibe un código aleatorio: al final se muestran en los avisos (Messages) del SQL Editor,
+-- o consúltalos con:  select name, code from public.guests where event_id = (select id from public.events where slug = 'ana-y-luis');
 
 do $seed$
 declare
   v_owner_email constant text := 'tu-correo@ejemplo.com';   -- <<<<<< CAMBIA ESTO
   v_owner uuid;
   v_event uuid;
+  v_row record;
 begin
   select id into v_owner from public.profiles where lower(email) = lower(v_owner_email);
   if v_owner is null then
@@ -101,18 +103,55 @@ begin
         theme = excluded.theme
   returning id into v_event;
 
-  -- Invitados de prueba: unos sin responder, otros confirmados o que no asistirán, y uno en inglés.
+  -- Invitados de prueba. La base de datos crea una persona por pase (sin nombre) y recalcula solo los resúmenes
+  -- (attending y confirmed_count) a partir de ellas; por eso las respuestas se cargan sobre las personas.
   delete from public.guests where event_id = v_event;
 
-  insert into public.guests (event_id, code, name, passes, phone, language, attending, confirmed_count, message, confirmed_at)
+  -- Sin código: la base de datos genera uno aleatorio por invitación (al final se muestran en un aviso).
+  insert into public.guests (event_id, name, passes, phone, language)
   values
-    (v_event, 'FAM001', 'Familia Pérez',    4, '+523121110001', 'es', null,  null, null, null),
-    (v_event, 'FAM002', 'Familia Ramírez',  3, '+523121110002', 'es', true,  3,    '¡Ahí estaremos, felicidades!', now() - interval '2 days'),
-    (v_event, 'AMI001', 'Sofía Hernández',  2, '+523121110003', 'es', true,  1,    'Voy solita, gracias por invitarme.', now() - interval '1 day'),
-    (v_event, 'AMI002', 'Carlos Medina',    2, '+523121110004', 'es', false, 0,    'No podré acompañarlos, mucha felicidad.', now() - interval '3 days'),
-    (v_event, 'AMI003', 'Daniela Ortiz',    1, '+523121110005', 'es', null,  null, null, null),
-    (v_event, 'USA001', 'John & Emily Carter', 2, '+15551230006', 'en', true, 2,   'Cannot wait to celebrate with you!', now() - interval '12 hours');
+    (v_event, 'Familia Pérez',       4, '+523121110001', 'es'),
+    (v_event, 'Familia Ramírez',     3, '+523121110002', 'es'),
+    (v_event, 'Sofía Hernández',     2, '+523121110003', 'es'),
+    (v_event, 'Carlos Medina',       2, '+523121110004', 'es'),
+    (v_event, 'Daniela Ortiz',       1, '+523121110005', 'es'),
+    (v_event, 'John & Emily Carter', 2, '+15551230006',  'en');
+
+  -- Familia Pérez: 4 personas con nombre, sin responder todavía.
+  update public.guest_members m set name = x.name
+  from (values (1, 'Ana Pérez'), (2, 'Luis Pérez'), (3, 'Sofía Pérez'), (4, 'Mateo Pérez')) as x(pos, name),
+       public.guests g
+  where g.event_id = v_event and g.name = 'Familia Pérez' and m.guest_id = g.id and m.position = x.pos;
+
+  -- Familia Ramírez: confirmó 2 de 3 (la tercera persona no asiste).
+  update public.guest_members m set name = x.name, attending = x.att
+  from (values (1, 'Roberto Ramírez', true), (2, 'Elena Ramírez', true), (3, 'Camila Ramírez', false)) as x(pos, name, att),
+       public.guests g
+  where g.event_id = v_event and g.name = 'Familia Ramírez' and m.guest_id = g.id and m.position = x.pos;
+
+  -- Sofía: vendrá sola (la segunda persona sin nombre no asiste).
+  update public.guest_members m set name = case when m.position = 1 then 'Sofía Hernández' end, attending = (m.position = 1)
+  from public.guests g where g.event_id = v_event and g.name = 'Sofía Hernández' and m.guest_id = g.id;
+
+  -- Carlos: no podrá asistir.
+  update public.guest_members m set attending = false
+  from public.guests g where g.event_id = v_event and g.name = 'Carlos Medina' and m.guest_id = g.id;
+
+  -- Los Carter: confirmaron los dos.
+  update public.guest_members m set name = x.name, attending = true
+  from (values (1, 'John Carter'), (2, 'Emily Carter')) as x(pos, name),
+       public.guests g
+  where g.event_id = v_event and g.name = 'John & Emily Carter' and m.guest_id = g.id and m.position = x.pos;
+
+  -- Mensajes y fechas de respuesta (no los toca el recálculo).
+  update public.guests set message = '¡Ahí estaremos, felicidades!', confirmed_at = now() - interval '2 days' where event_id = v_event and name = 'Familia Ramírez';
+  update public.guests set message = 'Voy solita, gracias por invitarme.', confirmed_at = now() - interval '1 day' where event_id = v_event and name = 'Sofía Hernández';
+  update public.guests set message = 'No podré acompañarlos, mucha felicidad.', confirmed_at = now() - interval '3 days' where event_id = v_event and name = 'Carlos Medina';
+  update public.guests set message = 'Cannot wait to celebrate with you!', confirmed_at = now() - interval '12 hours' where event_id = v_event and name = 'John & Emily Carter';
 
   raise notice 'Evento de prueba listo: /ana-y-luis  (id %)', v_event;
+  for v_row in select name, code from public.guests where event_id = v_event order by name loop
+    raise notice 'Invitación % -> /ana-y-luis/%', v_row.name, v_row.code;
+  end loop;
 end
 $seed$;

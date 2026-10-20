@@ -40,9 +40,12 @@ export function DeleteButton({ id, eventId, name }: { id: string; eventId: strin
   );
 }
 
-export function EditGuest({ eventId, guest }: {
+export type EditableMember = { id: string; name: string | null; attending: boolean | null };
+
+export function EditGuest({ eventId, guest, members }: {
   eventId: string;
   guest: { id: string; name: string; passes: number; phone: string | null };
+  members: EditableMember[];
 }) {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -68,6 +71,20 @@ export function EditGuest({ eventId, guest }: {
       <label>Nombre<input name="name" defaultValue={guest.name} required maxLength={100} /></label>
       <label>Pases<input name="passes" type="number" min={1} max={10} defaultValue={guest.passes} required /></label>
       <label>Teléfono<input name="phone" defaultValue={guest.phone ?? ""} maxLength={30} /></label>
+      <fieldset className="adm-people">
+        <legend>Personas</legend>
+        {members.map((m, i) => (
+          <div className="adm-person" key={m.id}>
+            <input name={`m_${m.id}_name`} defaultValue={m.name ?? ""} maxLength={80} placeholder={`Persona ${i + 1} (sin nombre)`} aria-label={`Nombre de la persona ${i + 1}`} />
+            <select name={`m_${m.id}_att`} defaultValue={m.attending === true ? "1" : m.attending === false ? "0" : ""} aria-label={`Asistencia de la persona ${i + 1}`}>
+              <option value="">Sin respuesta</option>
+              <option value="1">Asiste</option>
+              <option value="0">No asiste</option>
+            </select>
+          </div>
+        ))}
+        <small className="adm-hint">Si cambias los pases, se agregan o quitan personas al guardar. Vuelve a abrir “Editar” para verlas.</small>
+      </fieldset>
       {error && <small className="adm-err" role="alert">{error}</small>}
       <div className="adm-actions">
         <button className="adm-btn" disabled={pending}>{pending ? "Guardando…" : "Guardar"}</button>

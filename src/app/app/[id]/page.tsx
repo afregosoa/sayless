@@ -22,6 +22,7 @@ import { getPriceLabel } from "@/lib/pricing";
 import { addDays, contentSchema, formatDay } from "@/lib/event-content";
 import { RETENTION_DAYS, retentionEnabled } from "@/lib/retention";
 import { isReadyToPublish, publishChecklist } from "@/lib/publish-checklist";
+import { peopleSummary, tableSummary } from "@/lib/seating";
 
 export const metadata: Metadata = {
   title: "Invitados",
@@ -130,8 +131,18 @@ async function AdminContent({
     .select("id, name, code, passes, phone, attending, confirmed_count, message, confirmed_at")
     .eq("event_id", event.id)
     .order("name");
-  if (error) return <p className="adm-err">No se pudo cargar la lista.</p>;
+  if (error) {
+    console.error("No se pudo cargar la lista de invitados", { code: error.code, message: error.message });
+    return <p className="adm-err">No se pudo cargar la lista.</p>;
+  }
   const guests = data ?? [];
+  const [{ data: tableRows }, { data: memberRows }] = await Promise.all([
+    supabase.from("event_tables").select("id, name").eq("event_id", event.id),
+    supabase.from("guest_members").select("id, guest_id, name, attending, table_id").eq("event_id", event.id).order("position"),
+  ]);
+  const tableName = new Map((tableRows ?? []).map((t) => [t.id, t.name]));
+  const membersByGuest = new Map<string, { id: string; name: string | null; attending: boolean | null; table_id: string | null }[]>();
+  for (const m of memberRows ?? []) membersByGuest.set(m.guest_id, [...(membersByGuest.get(m.guest_id) ?? []), m]);
 
   const content = contentSchema.safeParse(event.content);
   const checklist = content.success
@@ -184,8 +195,10 @@ async function AdminContent({
         </div>
         <div className="adm-actions">
           <Link className="adm-btn" href={`/app/${event.id}/editar`}>Editar invitación</Link>
+          <Link className="adm-btn adm-ghost" href={`/app/${event.id}/mesas`}>Mesas</Link>
           {/* Descarga de archivo (route handler): debe ser un <a>, no navegación de cliente */}
           <a className="adm-btn adm-ghost" href={`/app/${event.id}/export`}>Exportar CSV</a>
+          <a className="adm-btn adm-ghost" href={`/app/${event.id}/export?por=persona`}>CSV por persona</a>
           <form action={signOut}><button className="adm-btn adm-ghost">Salir</button></form>
         </div>
       </header>
@@ -263,10 +276,10 @@ async function AdminContent({
       <div className="adm-table-wrap">
         <table className="adm-table">
           <thead>
-            <tr><th>Invitado</th><th>Pases</th><th>Estado</th><th>Mensaje</th><th>Acciones</th></tr>
+            <tr><th>Invitado</th><th>Pases</th><th>Estado</th><th>Mesa</th><th>Mensaje</th><th>Acciones</th></tr>
           </thead>
           <tbody>
-            {visible.length === 0 && <tr><td colSpan={5}>No hay invitados en esta vista.</td></tr>}
+            {visible.length === 0 && <tr><td colSpan={6}>No hay invitados en esta vista.</td></tr>}
             {visible.map((g) => {
               const url = `${base}/${event.slug}/${g.code}`;
               const invite = `Hola ${g.name}, te invitamos a ${event.title}. Aquí está tu invitación y el link para confirmar tu asistencia: ${url}`;
@@ -278,6 +291,7 @@ async function AdminContent({
                   <td data-label="Invitado">
                     <b>{g.name}</b>
                     <small>{g.code}{g.phone ? ` · ${g.phone}` : ""}</small>
+                    <small>{peopleSummary(membersByGuest.get(g.id) ?? [], g.passes)}</small>
                   </td>
                   <td data-label="Pases">{g.passes}</td>
                   <td data-label="Estado">
@@ -285,6 +299,7 @@ async function AdminContent({
                       : g.attending ? <span className="adm-tag adm-yes">Asiste · {g.confirmed_count}</span>
                       : <span className="adm-tag adm-no">No asiste</span>}
                   </td>
+                  <td data-label="Mesa">{tableSummary(membersByGuest.get(g.id) ?? [], tableName) || "—"}</td>
                   <td data-label="Mensaje">{g.message ?? "—"}</td>
                   <td data-label="Acciones" className="adm-row-actions">
                     <CopyLink url={url} />
@@ -294,7 +309,7 @@ async function AdminContent({
                     {g.attending === null && (
                       <a className="adm-link" target="_blank" rel="noopener" href={wa(remind)}>Recordar</a>
                     )}
-                    <EditGuest eventId={event.id} guest={{ id: g.id, name: g.name, passes: g.passes, phone: g.phone }} />
+                    <EditGuest eventId={event.id} guest={{ id: g.id, name: g.name, passes: g.passes, phone: g.phone }} members={membersByGuest.get(g.id) ?? []} />
                     <DeleteButton id={g.id} eventId={event.id} name={g.name} />
                   </td>
                 </tr>

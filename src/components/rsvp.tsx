@@ -4,6 +4,17 @@ import { useRef, useState, useTransition } from "react";
 import { lookupGuest, submitRsvp } from "@/app/actions";
 import type { Guest } from "@/lib/rsvp-schema";
 
+type Person = { id: string; name: string; attending: boolean };
+
+// Con una sola persona, el nombre de la invitación suele ser el suyo: se propone para ahorrar un paso.
+function initialPeople(g: Guest): Person[] {
+  return g.members.map((m) => ({
+    id: m.id,
+    name: m.name ?? (g.passes === 1 ? g.name : ""),
+    attending: m.attending ?? true,
+  }));
+}
+
 type Step = "code" | "form" | "done";
 
 type Props = {
@@ -20,7 +31,7 @@ export function Rsvp({ slug, initialCode, initialGuest, calendarUrl, deadlineLab
   const [code, setCode] = useState(initialCode ?? "");
   const [guest, setGuest] = useState<Guest | null>(initialGuest ?? null);
   const [attending, setAttending] = useState(initialGuest?.attending ?? true);
-  const [count, setCount] = useState(initialGuest?.confirmedCount || initialGuest?.passes || 1);
+  const [people, setPeople] = useState<Person[]>(initialGuest ? initialPeople(initialGuest) : []);
   const [message, setMessage] = useState(initialGuest?.message ?? "");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -29,7 +40,7 @@ export function Rsvp({ slug, initialCode, initialGuest, calendarUrl, deadlineLab
   function openGuest(g: Guest) {
     setGuest(g);
     setAttending(g.attending ?? true);
-    setCount(g.confirmedCount || g.passes);
+    setPeople(initialPeople(g));
     setMessage(g.message ?? "");
     setError(null);
     setStep("form");
@@ -40,6 +51,10 @@ export function Rsvp({ slug, initialCode, initialGuest, calendarUrl, deadlineLab
     setError(null);
     startTransition(async () => {
       const g = await lookupGuest(slug, code);
+      if (g === "limitado") {
+        setError("Demasiados intentos con códigos incorrectos. Espera unos minutos e intenta de nuevo.");
+        return;
+      }
       if (!g) {
         setError("No encontramos ese código. Revisa el mensaje de WhatsApp o escríbenos.");
         return;
@@ -52,19 +67,30 @@ export function Rsvp({ slug, initialCode, initialGuest, calendarUrl, deadlineLab
     e.preventDefault();
     if (!guest) return;
     setError(null);
+    // "No podremos" = nadie de la invitación asiste.
+    const answers = people.map((p) => ({ ...p, attending: attending && p.attending }));
+    if (attending && !answers.some((p) => p.attending)) {
+      setError("Marca al menos a una persona que asistirá, o elige “No podremos”.");
+      return;
+    }
+    if (answers.some((p) => p.attending && !p.name.trim())) {
+      setError("Escribe el nombre de cada persona que asistirá.");
+      return;
+    }
     startTransition(async () => {
-      const res = await submitRsvp({
-        slug,
-        code,
-        attending,
-        confirmedCount: attending ? count : 0,
-        message,
-      });
+      const res = await submitRsvp({ slug, code, members: answers, message });
       if (!res.ok) {
         setError(res.error);
         return;
       }
-      setGuest({ ...guest, attending, confirmedCount: attending ? count : 0, message });
+      setPeople(answers);
+      setGuest({
+        ...guest,
+        attending,
+        confirmedCount: answers.filter((p) => p.attending).length,
+        message,
+        members: answers.map((p) => ({ id: p.id, name: p.name.trim() || null, attending: p.attending })),
+      });
       setStep("done");
       setTimeout(() => doneRef.current?.focus(), 0);
     });
@@ -86,7 +112,7 @@ export function Rsvp({ slug, initialCode, initialGuest, calendarUrl, deadlineLab
           <input
             type="text"
             id="codigo"
-            maxLength={8}
+            maxLength={12}
             autoComplete="off"
             autoCapitalize="characters"
             spellCheck={false}
@@ -129,14 +155,31 @@ export function Rsvp({ slug, initialCode, initialGuest, calendarUrl, deadlineLab
           </div>
         </fieldset>
         {attending && (
-          <div className="field">
-            <span id="n-label" style={{ fontSize: 14, fontWeight: 400 }}>¿Cuántos asistirán?</span>
-            <div className="stepper" role="group" aria-labelledby="n-label">
-              <button type="button" aria-label="Quitar una persona" disabled={count <= 1} onClick={() => setCount(count - 1)}>−</button>
-              <output aria-live="polite">{count} <small>de {guest.passes}</small></output>
-              <button type="button" aria-label="Agregar una persona" disabled={count >= guest.passes} onClick={() => setCount(count + 1)}>+</button>
-            </div>
-          </div>
+          <fieldset className="people">
+            <legend>¿Quiénes asistirán?</legend>
+            {people.map((p, i) => (
+              <div className="person" key={p.id}>
+                <label className="person-check">
+                  <input
+                    type="checkbox"
+                    checked={p.attending}
+                    onChange={(e) => setPeople(people.map((x, j) => (j === i ? { ...x, attending: e.target.checked } : x)))}
+                  />
+                  <span className="sr-only">Asiste: {p.name || `persona ${i + 1}`}</span>
+                </label>
+                <input
+                  type="text"
+                  className="person-name"
+                  aria-label={`Nombre de la persona ${i + 1}`}
+                  placeholder={`Nombre de la persona ${i + 1}`}
+                  maxLength={80}
+                  value={p.name}
+                  onChange={(e) => setPeople(people.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))}
+                />
+              </div>
+            ))}
+            <small className="people-hint">Desmarca a quien no pueda asistir.</small>
+          </fieldset>
         )}
         <div className="field">
           <label htmlFor="mensaje">Mensaje para los novios (opcional)</label>
@@ -160,7 +203,11 @@ export function Rsvp({ slug, initialCode, initialGuest, calendarUrl, deadlineLab
       {attending ? (
         <>
           <p className="guest">¡Gracias, {guest?.name}!</p>
-          <p>Confirmaron {count} de {guest?.passes} lugares. Nos hace muy felices celebrar con ustedes.</p>
+          <p>
+            Confirmaron {people.filter((p) => p.attending).length} de {guest?.passes} lugares
+            {people.some((p) => p.attending) ? `: ${people.filter((p) => p.attending).map((p) => p.name.trim()).join(", ")}` : ""}.
+            {" "}Nos hace muy felices celebrar con ustedes.
+          </p>
         </>
       ) : (
         <>

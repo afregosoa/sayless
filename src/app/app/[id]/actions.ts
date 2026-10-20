@@ -23,6 +23,15 @@ const guestSchema = z.object({
   phone: z.string().trim().max(30).optional(),
 });
 
+// "Ana, Luis; Sofía" o uno por línea -> ["Ana", "Luis", "Sofía"]. Los nombres vacíos o repetidos de más se ignoran.
+function parseNames(raw: FormDataEntryValue | null, max: number): string[] {
+  return String(raw ?? "")
+    .split(/[\n,;]+/)
+    .map((n) => n.trim().slice(0, 80))
+    .filter(Boolean)
+    .slice(0, max);
+}
+
 export async function addGuest(_prev: FormState, formData: FormData): Promise<FormState> {
   await requireUser();
   const eventId = z.uuid().safeParse(formData.get("eventId"));
@@ -35,13 +44,22 @@ export async function addGuest(_prev: FormState, formData: FormData): Promise<Fo
   if (!parsed.success) return { error: "Revisa nombre (obligatorio) y pases (1 a 10)." };
 
   const supabase = await supabaseUser();
-  const { error } = await supabase.from("guests").insert({
+  const { data: created, error } = await supabase.from("guests").insert({
     event_id: eventId.data,
     name: parsed.data.name,
     passes: parsed.data.passes,
     phone: parsed.data.phone ?? null,
-  });
-  if (error) return { error: "No se pudo guardar el invitado." };
+  }).select("id").single();
+  if (error || !created) return { error: "No se pudo guardar el invitado." };
+
+  // La base de datos creó una persona por pase (sin nombre). Los nombres escritos van a las primeras.
+  const names = parseNames(formData.get("names"), parsed.data.passes);
+  if (names.length) {
+    const { data: people } = await supabase.from("guest_members").select("id").eq("guest_id", created.id).order("position");
+    await Promise.all(
+      (people ?? []).slice(0, names.length).map((m, i) => supabase.from("guest_members").update({ name: names[i] }).eq("id", m.id)),
+    );
+  }
 
   revalidatePath(`/app/${eventId.data}`);
   return { ok: `${parsed.data.name} agregado.` };
@@ -111,6 +129,26 @@ export async function updateGuest(_prev: FormState, formData: FormData): Promise
   if (error?.code === "23514") return { error: "Ya confirmaron más personas que esos pases." };
   if (error) return { error: "No se pudo guardar." };
   if (!data?.length) return { error: "No tienes permiso para editar este invitado." };
+
+  // Personas: nombre y asistencia (por si confirman por teléfono). Campos m_<id>_name y m_<id>_att ("", "1" o "0").
+  // Si cambiaron los pases, la base de datos ya agregó o quitó personas; las que ya no existen simplemente no se actualizan.
+  const edits = new Map<string, { name?: string; att?: string }>();
+  for (const [key, value] of formData.entries()) {
+    const m = /^m_([0-9a-f-]{36})_(name|att)$/.exec(key);
+    if (!m || !z.uuid().safeParse(m[1]).success) continue;
+    const e = edits.get(m[1]) ?? {};
+    if (m[2] === "name") e.name = String(value).trim().slice(0, 80);
+    else e.att = String(value);
+    edits.set(m[1], e);
+  }
+  await Promise.all(
+    [...edits.entries()].map(([memberId, e]) =>
+      supabase.from("guest_members")
+        .update({ name: e.name || null, attending: e.att === "1" ? true : e.att === "0" ? false : null })
+        .eq("id", memberId)
+        .eq("guest_id", ids.data.id),
+    ),
+  );
 
   revalidatePath(`/app/${ids.data.eventId}`);
   return { ok: "Guardado." };
@@ -272,6 +310,9 @@ export async function anonymizeGuests(eventId: string, confirmation: string): Pr
     .is("anonymized_at", null)
     .select("id");
   if (error) return { error: "No se pudieron borrar los datos. Intenta de nuevo." };
+  // También los nombres de cada persona de las invitaciones.
+  const guestIds = (data ?? []).map((g) => g.id);
+  if (guestIds.length) await supabaseAdmin().from("guest_members").update({ name: null }).in("guest_id", guestIds);
 
   await audit(owner.id, eventId, "guests_anonymized", { count: data?.length ?? 0, reason: "owner_request" });
   revalidatePath(`/app/${eventId}`);

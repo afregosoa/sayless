@@ -19,10 +19,14 @@ export function AddGuestForm({ eventId }: { eventId: string }) {
       <h2>Agregar invitado</h2>
       <input type="hidden" name="eventId" value={eventId} />
       <div className="adm-grid">
-        <label>Nombre<input name="name" required maxLength={100} placeholder="Familia Pérez" /></label>
+        <label>Nombre de la invitación<input name="name" required maxLength={100} placeholder="Familia Pérez" /></label>
         <label>Pases<input name="passes" type="number" min={1} max={10} defaultValue={1} required /></label>
         <label>Teléfono (opcional)<input name="phone" inputMode="tel" maxLength={30} placeholder="+52 312 123 4567" /></label>
       </div>
+      <label>Nombres de las personas (opcional)
+        <textarea name="names" rows={2} maxLength={800} placeholder="Ana, Luis, Sofía, Mateo" />
+        <small className="adm-hint">Separados por coma. Los que no escribas, los completa cada invitado al confirmar.</small>
+      </label>
       <Status state={state} />
       <button className="adm-btn" disabled={pending}>{pending ? "Guardando…" : "Agregar"}</button>
     </form>

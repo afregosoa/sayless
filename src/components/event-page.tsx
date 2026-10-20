@@ -8,6 +8,7 @@ export async function EventPage({ slug, code }: { slug: string; code?: string })
   if (!event) notFound();
 
   // Código inválido: se muestra la invitación normal pidiendo el código.
-  const guest = code ? await lookupGuest(slug, code) : null;
+  const found = code ? await lookupGuest(slug, code) : null;
+  const guest = found === "limitado" ? null : found; // bloqueado por intentos fallidos: se ve la invitación general
   return <Invitation event={event} code={guest ? code?.toUpperCase() : undefined} guest={guest ?? undefined} />;
 }
