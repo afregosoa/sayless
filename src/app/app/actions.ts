@@ -47,6 +47,7 @@ export async function createEvent(_prev: CreateEventState, formData: FormData): 
   if (error) {
     if (error.code === "23505") return { error: "Esa dirección ya está en uso. Prueba otra." };
     if (error.code === "23514") return { error: "Esa dirección no está permitida. Prueba otra." };
+    console.error("createEvent falló", { code: error.code, message: error.message, details: error.details, hint: error.hint });
     return { error: "No se pudo crear el evento." };
   }
   redirect(`/app/${data.id}`);
