@@ -28,5 +28,5 @@ async function Preview({ params }: { params: PageProps<"/app/[id]/vista-previa">
   const event = data && buildPublicEvent(data);
   if (!event) notFound();
 
-  return <Invitation event={event} />;
+  return <Invitation event={event} preview />;
 }

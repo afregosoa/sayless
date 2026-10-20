@@ -9,6 +9,9 @@ const httpUrl = z.url({ protocol: /^https?$/ }).max(500);
 // Solo rutas de nuestro bucket (<event_id>/<uuid>.webp): nunca URLs externas arbitrarias.
 const MEDIA_PATH = /^[0-9a-f-]{36}\/[0-9a-f-]{36}\.webp$/;
 const mediaPath = z.string().regex(MEDIA_PATH);
+// Música: <event_id>/<uuid>.mp3 en el bucket de audio.
+const AUDIO_PATH = /^[0-9a-f-]{36}\/[0-9a-f-]{36}\.mp3$/;
+const audioPath = z.string().regex(AUDIO_PATH);
 
 export const contentSchema = z.object({
   hero: z.object({
@@ -50,6 +53,18 @@ export const contentSchema = z.object({
     items: z.array(z.object({ q: str(200), a: str(1200) })).max(20).default([]),
   }).optional(),
   footer: z.object({ monogram: str(20), line: str(120) }).optional(),
+  // El cliente sube su propio MP3 y declara tener derecho a usarlo (ver /terminos).
+  music: z.object({
+    enabled: flag,
+    path: audioPath.optional(),
+    title: str(120),
+    button_label: str(40), // texto del botón de la portada; vacío = "Reproduce nuestra canción"
+    cover: flag, // pantalla "Toca para abrir": el navegador exige un toque para reproducir audio
+    start: z.number().min(0).max(3600).optional(), // segundo en que empieza (saltar la introducción)
+    end: z.number().min(0).max(3600).optional(),   // segundo en que termina y vuelve a empezar (opcional)
+    rights_accepted: z.boolean().default(false),
+    accepted_at: z.string().max(40).optional(), // lo fija el servidor al guardar
+  }).optional(),
 });
 
 const color = z.string().regex(/^#[0-9a-fA-F]{6}$/);
@@ -116,6 +131,11 @@ export function googleCalendarUrl(title: string, isoDate: string, location: stri
 
 // ── Fotos ──
 export const MEDIA_BUCKET = "event-media";
+export const AUDIO_BUCKET = "event-audio";
+
+export function audioUrl(path: string) {
+  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${AUDIO_BUCKET}/${path}`;
+}
 
 export function isMediaPath(path: string) {
   return MEDIA_PATH.test(path);

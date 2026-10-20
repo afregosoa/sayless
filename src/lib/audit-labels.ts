@@ -29,6 +29,7 @@ export function auditLabel(action: string, details: Record<string, unknown>): st
         ? `Datos de invitados eliminados a tu solicitud${n}`
         : `Datos de invitados eliminados por política de retención${n}`;
     }
+    case "music_rights_accepted": return "Aceptaste la declaración de derechos de la música";
     case "event_created_for_client": return "Evento creado por soporte";
     default: return action;
   }

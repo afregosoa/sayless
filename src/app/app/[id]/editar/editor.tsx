@@ -2,11 +2,14 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState, useTransition } from "react";
-import { MAX_GALLERY, mediaUrl, type EventContent, type EventTheme } from "@/lib/event-content";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { MAX_AUDIO_BYTES, MAX_AUDIO_MB } from "@/lib/audio-limits";
+import { compressMp3, CompressError } from "@/lib/client-audio";
+import { audioUrl, MAX_GALLERY, mediaUrl, type EventContent, type EventTheme } from "@/lib/event-content";
 import { DEFAULT_THEME } from "@/lib/event-starter";
 import { prepareImage } from "@/lib/client-image";
 import { saveEvent } from "./actions";
+import { uploadEventAudio } from "./audio-actions";
 import { uploadEventImage } from "./media-actions";
 
 type State = {
@@ -17,7 +20,7 @@ type State = {
   theme: EventTheme;
 };
 
-type Toggleable = "welcome" | "gallery" | "countdown" | "venues" | "schedule" | "dress_code" | "gifts" | "lodging" | "faq";
+type Toggleable = "welcome" | "gallery" | "countdown" | "venues" | "schedule" | "dress_code" | "gifts" | "lodging" | "faq" | "music";
 
 const BLANK = {
   welcome: { enabled: true, eyebrow: "", heading: "", heading_script: "", body: "", quote: "" },
@@ -29,6 +32,7 @@ const BLANK = {
   gifts: { enabled: true, body: "", button_label: "Ver mesa de regalos" },
   lodging: { enabled: true, items: [] },
   faq: { enabled: true, items: [] },
+  music: { enabled: true, title: "", button_label: "", cover: true, rights_accepted: false },
 } satisfies Pick<Required<EventContent>, Toggleable>;
 
 const COLOR_LABELS: [keyof NonNullable<EventTheme["light"]>, string][] = [
@@ -208,6 +212,151 @@ function GalleryField({ eventId, items, onChange }: {
   );
 }
 
+// mm:ss <-> segundos. Acepta "1:23", "83" o "1:23.5".
+function fmtTime(sec?: number) {
+  if (sec == null) return "";
+  const m = Math.floor(sec / 60);
+  const s = Math.round((sec % 60) * 10) / 10;
+  return `${m}:${s < 10 ? "0" : ""}${s}`;
+}
+function parseTime(text: string): number | undefined {
+  const t = text.trim();
+  if (!t) return undefined;
+  const parts = t.split(":");
+  if (parts.length > 2 || parts.some((p) => !/^\d+(\.\d+)?$/.test(p))) return undefined;
+  const n = parts.length === 2 ? Number(parts[0]) * 60 + Number(parts[1]) : Number(parts[0]);
+  return Number.isFinite(n) ? Math.min(n, 3600) : undefined;
+}
+
+function TimeField({ label, value, onCommit, onUseCurrent, placeholder }: {
+  label: string; value?: number; onCommit: (v?: number) => void; onUseCurrent: () => void; placeholder: string;
+}) {
+  const [text, setText] = useState(fmtTime(value));
+  useEffect(() => setText(fmtTime(value)), [value]);
+  return (
+    <div className="ed-time">
+      <label>{label}
+        <input value={text} placeholder={placeholder} inputMode="decimal" maxLength={8}
+          onChange={(e) => setText(e.target.value)} onBlur={() => onCommit(parseTime(text))} />
+      </label>
+      <button type="button" className="adm-link" onClick={onUseCurrent}>Usar el punto actual del reproductor</button>
+    </div>
+  );
+}
+
+// ── Música (MP3 propio del cliente, con declaración de derechos) ──
+type Music = NonNullable<EventContent["music"]>;
+
+function MusicField({ eventId, music, onChange }: {
+  eventId: string; music: Music; onChange: (patch: Partial<Music>) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState("");
+  const player = useRef<HTMLAudioElement>(null);
+
+  async function upload(original: File) {
+    setError(null);
+    setBusy(true);
+    try {
+      // Si pasa del límite de la petición, se comprime aquí antes de subir (el servidor la rechazaría con
+      // una excepción y la pantalla se quedaría en "Subiendo…").
+      let file = original;
+      if (file.size > MAX_AUDIO_BYTES) {
+        setStatus("Comprimiendo…");
+        try {
+          file = await compressMp3(file, MAX_AUDIO_BYTES, (f, phase) =>
+            setStatus(phase === "decode" ? "Leyendo audio…" : `Comprimiendo… ${Math.round(f * 100)} %`));
+        } catch (e) {
+          return setError(e instanceof CompressError ? e.message : "No pudimos comprimir ese archivo. Prueba con otro MP3.");
+        }
+      }
+      setStatus("Subiendo…");
+      const data = new FormData();
+      data.append("file", file);
+      const res = await uploadEventAudio(eventId, data);
+      if (!res.ok) return setError(res.error);
+      onChange({ path: res.path, start: undefined, end: undefined, title: music.title || original.name.replace(/\.mp3$/i, "").slice(0, 120) });
+    } catch {
+      setError("No se pudo subir la música. Revisa tu conexión e intenta de nuevo.");
+    } finally {
+      setBusy(false);
+      setStatus("");
+    }
+  }
+
+  return (
+    <div className="ed-list">
+      <label className="ed-check">
+        <input type="checkbox" checked={music.rights_accepted} onChange={(e) => onChange({ rights_accepted: e.target.checked })} />
+        <span>
+          Declaro que soy titular de los derechos de esta música o cuento con autorización para usarla en mi invitación,
+          y acepto los <Link href="/terminos" target="_blank" className="adm-link">Términos de uso</Link>. Entiendo que SayLess
+          puede retirarla si recibe una reclamación.
+        </span>
+      </label>
+
+      {music.path && (
+        <>
+          <audio
+            ref={player} controls preload="metadata" src={audioUrl(music.path)} className="ed-audio"
+            onTimeUpdate={(e) => { // al probar, se detiene en el final elegido
+              if (music.end != null && e.currentTarget.currentTime >= music.end) e.currentTarget.pause();
+            }}
+          />
+          <div className="adm-grid">
+            <TimeField label="Empieza en (mm:ss)" placeholder="0:00" value={music.start}
+              onCommit={(start) => onChange({ start })}
+              onUseCurrent={() => onChange({ start: Math.round((player.current?.currentTime ?? 0) * 10) / 10 })} />
+            <TimeField label="Termina en (opcional)" placeholder="hasta el final" value={music.end}
+              onCommit={(end) => onChange({ end })}
+              onUseCurrent={() => onChange({ end: Math.round((player.current?.currentTime ?? 0) * 10) / 10 })} />
+          </div>
+          <button type="button" className="adm-btn adm-ghost" style={{ alignSelf: "flex-start" }}
+            onClick={() => { const el = player.current; if (el) { el.currentTime = music.start ?? 0; void el.play(); } }}>
+            ▶ Probar desde el inicio elegido
+          </button>
+          <small className="adm-hint">
+            Mueve el reproductor al momento que quieras, pulsa “Usar el punto actual” y se guarda ese segundo.
+            La canción se repite entre el inicio y el final elegidos.
+          </small>
+          <div className="adm-grid">
+            <Text label="Nombre de la canción" max={120} value={music.title} onChange={(title) => onChange({ title })} />
+            <Text label="Texto del botón en la portada" max={40} value={music.button_label ?? ""} placeholder="Reproduce nuestra canción"
+              onChange={(button_label) => onChange({ button_label })} />
+          </div>
+          <label className="ed-check">
+            <input type="checkbox" checked={music.cover} onChange={(e) => onChange({ cover: e.target.checked })} />
+            <span>Mostrar pantalla de apertura “Toca para abrir” (recomendado: los celulares solo reproducen audio después de un toque)</span>
+          </label>
+        </>
+      )}
+
+      <div className="ed-photo-actions">
+        <label className={`adm-btn adm-ghost ed-file${music.rights_accepted ? "" : " ed-disabled"}`}>
+          {busy ? (status || "Subiendo…") : music.path ? "Cambiar canción" : "Subir MP3"}
+          <input type="file" accept="audio/mpeg,.mp3" hidden disabled={busy || !music.rights_accepted}
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              if (file) await upload(file);
+            }} />
+        </label>
+        {music.path && (
+          <button type="button" className="adm-link adm-danger"
+            onClick={() => onChange({ path: undefined, title: "", rights_accepted: false })}>
+            Quitar música
+          </button>
+        )}
+        <small className="adm-hint">
+          {music.rights_accepted ? `Si el MP3 pesa más de ${MAX_AUDIO_MB} MB, se comprime automáticamente al subirlo.` : "Acepta la declaración para poder subir tu canción."}
+        </small>
+        {error && <small className="adm-err" role="alert">{error}</small>}
+      </div>
+    </div>
+  );
+}
+
 export function Editor({ eventId, initial, publicPath, isPublished }: {
   eventId: string; initial: State; publicPath: string; isPublished: boolean;
 }) {
@@ -263,7 +412,7 @@ export function Editor({ eventId, initial, publicPath, isPublished }: {
   }
 
   const venues = sec("venues"), schedule = sec("schedule"), lodging = sec("lodging"), faq = sec("faq");
-  const gallery = sec("gallery"), welcome = sec("welcome"), countdown = sec("countdown"), dress = sec("dress_code"), gifts = sec("gifts");
+  const music = sec("music"), gallery = sec("gallery"), welcome = sec("welcome"), countdown = sec("countdown"), dress = sec("dress_code"), gifts = sec("gifts");
 
   return (
     <div className="ed-layout">
@@ -316,6 +465,10 @@ export function Editor({ eventId, initial, publicPath, isPublished }: {
 
         <Panel title="Galería de fotos" enabled={gallery.enabled} onToggle={toggle("gallery")}>
           <GalleryField eventId={eventId} items={gallery.items} onChange={(items) => section("gallery", { items })} />
+        </Panel>
+
+        <Panel title="Música" enabled={music.enabled} onToggle={toggle("music")}>
+          <MusicField eventId={eventId} music={music} onChange={(patch) => section("music", patch)} />
         </Panel>
 
         <Panel title="Cuenta regresiva" enabled={countdown.enabled} onToggle={toggle("countdown")}>

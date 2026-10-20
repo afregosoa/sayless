@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { audit } from "@/lib/audit";
 import { requireSuperadmin } from "@/lib/auth";
-import { MEDIA_BUCKET } from "@/lib/event-content";
+import { AUDIO_BUCKET, MEDIA_BUCKET } from "@/lib/event-content";
 import { DEFAULT_THEME, EVENT_TYPES, starterContent } from "@/lib/event-starter";
 import { supabaseAdmin } from "@/lib/supabase-server";
 
@@ -139,6 +139,8 @@ export async function deleteEvent(eventId: string, confirmSlug: string): Promise
 
   const { data: files } = await db.storage.from(MEDIA_BUCKET).list(eventId, { limit: 100 });
   if (files?.length) await db.storage.from(MEDIA_BUCKET).remove(files.map((f) => `${eventId}/${f.name}`));
+  const { data: songs } = await db.storage.from(AUDIO_BUCKET).list(eventId, { limit: 100 });
+  if (songs?.length) await db.storage.from(AUDIO_BUCKET).remove(songs.map((f) => `${eventId}/${f.name}`));
 
   const { error } = await db.from("events").delete().eq("id", eventId);
   if (error) return { ok: false, error: "No se pudo eliminar el evento." };

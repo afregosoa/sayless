@@ -1,8 +1,9 @@
 import Image from "next/image";
 import { Countdown } from "./countdown";
+import { MusicPlayer } from "./music-player";
 import { HeroArt } from "./hero-art";
 import { Rsvp } from "./rsvp";
-import { mediaUrl, themeCss } from "@/lib/event-content";
+import { audioUrl, mediaUrl, themeCss } from "@/lib/event-content";
 import type { PublicEvent } from "@/lib/events";
 import type { Guest } from "@/lib/rsvp-schema";
 
@@ -16,7 +17,7 @@ function Lines({ text }: { text: string }) {
   ));
 }
 
-export function Invitation({ event, code, guest }: { event: PublicEvent; code?: string; guest?: Guest }) {
+export function Invitation({ event, code, guest, preview }: { event: PublicEvent; code?: string; guest?: Guest; preview?: boolean }) {
   const { content: c, theme } = event;
   const css = themeCss(theme);
 
@@ -32,6 +33,18 @@ export function Invitation({ event, code, guest }: { event: PublicEvent; code?: 
           <a href="#rsvp">Confirmar</a>
           {on(c.faq) && <a href="#preguntas">Preguntas</a>}
         </nav>
+        {on(c.music) && c.music.path && (
+          <MusicPlayer
+            src={audioUrl(c.music.path)}
+            title={c.music.title}
+            label={c.music.button_label}
+            cover={c.music.cover}
+            start={c.music.start}
+            end={c.music.end}
+            eventTitle={c.hero.title || event.title}
+            preview={preview}
+          />
+        )}
         <h1 className="names" style={{ marginTop: 28 }}><Lines text={c.hero.title || event.title} /></h1>
         {c.hero.date_label && <p className="date-big">{c.hero.date_label}</p>}
         {c.hero.subtitle && <p className="script">{c.hero.subtitle}</p>}
