@@ -39,7 +39,7 @@ async function Events() {
       <header className="adm-head">
         <div>
           <h1>Mis eventos</h1>
-          <p className="adm-hint">{user.email}</p>
+          <p className="adm-hint">{user.name ? `${user.name} · ` : ""}{user.email}</p>
         </div>
         <div className="adm-actions">
           {user.isSuperadmin && <Link className="adm-btn adm-ghost" href="/admin">Panel admin</Link>}

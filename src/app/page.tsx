@@ -27,7 +27,7 @@ const FEATURES: { title: string; text: string; soon?: boolean }[] = [
 ];
 
 const STEPS = [
-  { n: "1", title: "Crea tu cuenta", text: "Solo tu correo. Te enviamos un enlace y entras, sin contraseñas." },
+  { n: "1", title: "Crea tu cuenta", text: "Con tu correo y una contraseña, o con tu cuenta de Google. Toma menos de un minuto." },
   { n: "2", title: "Diseña tu invitación", text: "Elige plantilla, personaliza el contenido y agrega a tus invitados. Es gratis mientras armas todo." },
   { n: "3", title: "Publica y comparte", text: "Cuando todo esté listo, pagas una sola vez y envías los enlaces a tus invitados." },
 ];
