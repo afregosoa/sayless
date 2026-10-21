@@ -2,8 +2,10 @@
 
 import { useRef, useState, useTransition } from "react";
 import { lookupGuest, submitRsvp } from "@/app/actions";
+import { AddToCalendar } from "@/components/add-to-calendar";
 import { DietFields } from "@/components/diet-fields";
 import { dietText } from "@/lib/diet";
+import type { CalendarData } from "@/lib/calendar";
 import type { Guest } from "@/lib/rsvp-schema";
 
 type Person = { id: string; name: string; attending: boolean; diet: string[]; allergies: string };
@@ -25,13 +27,13 @@ type Props = {
   slug: string;
   initialCode?: string;
   initialGuest?: Guest;
-  calendarUrl?: string | null;
+  calendar?: CalendarData | null;
   deadlineLabel?: string | null;
   closed?: boolean;
   askDiet?: boolean; // el anfitrión decide si se pregunta alimentación y alergias
 };
 
-export function Rsvp({ slug, initialCode, initialGuest, calendarUrl, deadlineLabel, closed, askDiet }: Props) {
+export function Rsvp({ slug, initialCode, initialGuest, calendar, deadlineLabel, closed, askDiet }: Props) {
   const [step, setStep] = useState<Step>(initialGuest ? "form" : "code");
   const [code, setCode] = useState(initialCode ?? "");
   const [guest, setGuest] = useState<Guest | null>(initialGuest ?? null);
@@ -235,9 +237,7 @@ export function Rsvp({ slug, initialCode, initialGuest, calendarUrl, deadlineLab
         </>
       )}
       <div className="row">
-        {attending && calendarUrl && (
-          <a className="btn ghost" target="_blank" rel="noopener" href={calendarUrl}>Agregar al calendario</a>
-        )}
+        {attending && calendar && <AddToCalendar cal={calendar} slug={slug} />}
         {!closed && (
           <button className="btn ghost" type="button" onClick={() => guest && openGuest(guest)}>
             Cambiar respuesta

@@ -1,7 +1,8 @@
 import "server-only";
 import { cache } from "react";
+import { buildCalendarData, type CalendarData } from "./calendar";
 import {
-  contentSchema, themeSchema, formatDay, zonedMidnightUtc, googleCalendarUrl,
+  contentSchema, themeSchema, formatDay, zonedMidnightUtc,
   type EventContent, type EventTheme,
 } from "./event-content";
 import { supabaseAdmin } from "./supabase-server";
@@ -16,7 +17,7 @@ export type PublicEvent = {
   theme: EventTheme;
   countdownTarget: number | null;
   deadlineLabel: string | null;
-  calendarUrl: string | null;
+  calendar: CalendarData | null; // para "Agregar al calendario" (Google y .ics)
 };
 
 export const EVENT_COLUMNS =
@@ -43,7 +44,6 @@ export function buildPublicEvent(row: EventRow): PublicEvent | null {
     console.error(`Evento "${row.slug}" con contenido inválido`, content.error ?? theme.error);
     return null;
   }
-  const location = content.data.venues?.items[0]?.address ?? "";
   return {
     id: row.id,
     slug: row.slug,
@@ -54,7 +54,16 @@ export function buildPublicEvent(row: EventRow): PublicEvent | null {
     theme: theme.data,
     countdownTarget: row.event_date ? zonedMidnightUtc(row.event_date, row.timezone) : null,
     deadlineLabel: row.rsvp_deadline ? formatDay(row.rsvp_deadline, row.locale) : null,
-    calendarUrl: row.event_date ? googleCalendarUrl(row.title, row.event_date, location) : null,
+    calendar: row.event_date
+      ? buildCalendarData({
+          id: row.id,
+          // El título público de la invitación (sin saltos de línea); si falta, el nombre interno del evento.
+          title: (content.data.hero.title || row.title).replace(/\s*\n\s*/g, " ").trim(),
+          eventDate: row.event_date,
+          midnightUtc: zonedMidnightUtc(row.event_date, row.timezone),
+          content: content.data,
+        })
+      : null,
   };
 }
 
@@ -69,6 +78,19 @@ export const getPublicEvent = cache(async (slug: string): Promise<PublicEvent | 
     .in("status", ["published", "closed"])
     .maybeSingle();
   return data ? buildPublicEvent(data) : null;
+});
+
+/**
+ * Por qué una invitación no se puede mostrar. Solo devuelve el estado, nunca datos del evento.
+ *  - "draft": existe pero aún no está publicada.
+ *  - "unreadable": está publicada, pero su contenido no se puede leer.
+ *  - "missing": no existe ninguna con esa dirección.
+ */
+export const getUnavailableReason = cache(async (slug: string): Promise<"draft" | "unreadable" | "missing"> => {
+  if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug)) return "missing";
+  const { data } = await supabaseAdmin().from("events").select("status").eq("slug", slug).maybeSingle();
+  if (!data) return "missing";
+  return data.status === "draft" ? "draft" : "unreadable";
 });
 
 // Temporal: el panel /admin aún opera sobre un solo evento (el primero). La fase 3 lo reemplaza.

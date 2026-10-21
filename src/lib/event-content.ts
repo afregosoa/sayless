@@ -118,19 +118,6 @@ export function zonedMidnightUtc(isoDate: string, timeZone: string) {
   return guess - offsetMs(first, timeZone);
 }
 
-export function googleCalendarUrl(title: string, isoDate: string, location: string) {
-  const compact = (iso: string) => iso.replaceAll("-", "");
-  const next = new Date(`${isoDate}T00:00:00Z`);
-  next.setUTCDate(next.getUTCDate() + 1);
-  const q = new URLSearchParams({
-    action: "TEMPLATE",
-    text: title,
-    dates: `${compact(isoDate)}/${compact(next.toISOString().slice(0, 10))}`,
-    location,
-  });
-  return `https://calendar.google.com/calendar/render?${q}`;
-}
-
 // ── Fotos ──
 export const MEDIA_BUCKET = "event-media";
 export const AUDIO_BUCKET = "event-audio";

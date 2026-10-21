@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { AddToCalendar } from "./add-to-calendar";
 import { Countdown } from "./countdown";
 import { MusicPlayer } from "./music-player";
 import { HeroArt } from "./hero-art";
@@ -48,6 +49,7 @@ export function Invitation({ event, code, guest, preview }: { event: PublicEvent
         <h1 className="names" style={{ marginTop: 28 }}><Lines text={c.hero.title || event.title} /></h1>
         {c.hero.date_label && <p className="date-big">{c.hero.date_label}</p>}
         {c.hero.subtitle && <p className="script">{c.hero.subtitle}</p>}
+        {event.calendar && <AddToCalendar cal={event.calendar} slug={event.slug} className="btn ghost cal-hero" />}
         {c.hero.image && (
           <Image
             className="hero-photo"
@@ -187,7 +189,7 @@ export function Invitation({ event, code, guest, preview }: { event: PublicEvent
           slug={event.slug}
           initialCode={code}
           initialGuest={guest}
-          calendarUrl={event.calendarUrl}
+          calendar={event.calendar}
           deadlineLabel={event.deadlineLabel}
           closed={event.status === "closed"}
           askDiet={!!c.rsvp?.ask_diet}

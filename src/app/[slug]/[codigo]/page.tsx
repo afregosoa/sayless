@@ -6,7 +6,7 @@ import { getPublicEvent } from "@/lib/events";
 export async function generateMetadata({ params }: PageProps<"/[slug]/[codigo]">): Promise<Metadata> {
   const { slug } = await params;
   const event = await getPublicEvent(slug);
-  if (!event) return {};
+  if (!event) return { title: "Invitación no disponible", robots: { index: false, follow: false } };
   const { hero } = event.content;
   return {
     title: { absolute: event.title }, // sin el sufijo de la plataforma

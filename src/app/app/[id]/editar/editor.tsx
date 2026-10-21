@@ -478,6 +478,9 @@ export function Editor({ eventId, initial, publicPath, isPublished }: {
 
         <Panel title="Lugares" enabled={venues.enabled} onToggle={toggle("venues")}>
           <Text label="Texto superior (opcional)" max={80} value={venues.eyebrow} onChange={(eyebrow) => section("venues", { eyebrow })} />
+          <p className="adm-hint">
+            “Agregar al calendario” usa la hora del primer lugar (por ejemplo, <b>6:00 PM</b> o <b>18:00</b>). Si no se entiende la hora, se agrega como evento de todo el día.
+          </p>
           <List items={venues.items} max={6} addLabel="Agregar lugar" onChange={(items) => section("venues", { items })}
             blank={{ label: "", name: "", time: "", address: "", map_query: "" }}
             render={(v, patch) => (
