@@ -190,6 +190,7 @@ export function Invitation({ event, code, guest, preview }: { event: PublicEvent
           calendarUrl={event.calendarUrl}
           deadlineLabel={event.deadlineLabel}
           closed={event.status === "closed"}
+          askDiet={!!c.rsvp?.ask_diet}
         />
       </section>
 

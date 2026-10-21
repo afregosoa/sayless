@@ -6,6 +6,7 @@ import { z } from "zod";
 import { audit } from "@/lib/audit";
 import { requireUser } from "@/lib/auth";
 import { parseCsv } from "@/lib/csv";
+import { cleanDiet } from "@/lib/diet";
 import { contentSchema } from "@/lib/event-content";
 import { isReadyToPublish, publishChecklist } from "@/lib/publish-checklist";
 import { getStripe } from "@/lib/stripe";
@@ -132,19 +133,28 @@ export async function updateGuest(_prev: FormState, formData: FormData): Promise
 
   // Personas: nombre y asistencia (por si confirman por teléfono). Campos m_<id>_name y m_<id>_att ("", "1" o "0").
   // Si cambiaron los pases, la base de datos ya agregó o quitó personas; las que ya no existen simplemente no se actualizan.
-  const edits = new Map<string, { name?: string; att?: string }>();
+  const edits = new Map<string, { name?: string; att?: string; diet?: string; allergies?: string }>();
   for (const [key, value] of formData.entries()) {
-    const m = /^m_([0-9a-f-]{36})_(name|att)$/.exec(key);
+    const m = /^m_([0-9a-f-]{36})_(name|att|diet|allergies)$/.exec(key);
     if (!m || !z.uuid().safeParse(m[1]).success) continue;
     const e = edits.get(m[1]) ?? {};
-    if (m[2] === "name") e.name = String(value).trim().slice(0, 80);
-    else e.att = String(value);
+    const text = String(value);
+    if (m[2] === "name") e.name = text.trim().slice(0, 80);
+    else if (m[2] === "att") e.att = text;
+    else if (m[2] === "diet") e.diet = text;
+    else e.allergies = text.trim().slice(0, 200);
     edits.set(m[1], e);
   }
   await Promise.all(
     [...edits.entries()].map(([memberId, e]) =>
       supabase.from("guest_members")
-        .update({ name: e.name || null, attending: e.att === "1" ? true : e.att === "0" ? false : null })
+        .update({
+          name: e.name || null,
+          attending: e.att === "1" ? true : e.att === "0" ? false : null,
+          // Alimentación y alergias solo si el formulario las trae (el panel las manda siempre que el evento las pregunta).
+          ...(e.diet !== undefined ? { diet: cleanDiet(e.diet.split(",")) } : {}),
+          ...(e.allergies !== undefined ? { allergies: e.allergies || null } : {}),
+        })
         .eq("id", memberId)
         .eq("guest_id", ids.data.id),
     ),
@@ -310,9 +320,9 @@ export async function anonymizeGuests(eventId: string, confirmation: string): Pr
     .is("anonymized_at", null)
     .select("id");
   if (error) return { error: "No se pudieron borrar los datos. Intenta de nuevo." };
-  // También los nombres de cada persona de las invitaciones.
+  // También los nombres de cada persona y su alimentación y alergias (datos de salud).
   const guestIds = (data ?? []).map((g) => g.id);
-  if (guestIds.length) await supabaseAdmin().from("guest_members").update({ name: null }).in("guest_id", guestIds);
+  if (guestIds.length) await supabaseAdmin().from("guest_members").update({ name: null, diet: [], allergies: null }).in("guest_id", guestIds);
 
   await audit(owner.id, eventId, "guests_anonymized", { count: data?.length ?? 0, reason: "owner_request" });
   revalidatePath(`/app/${eventId}`);

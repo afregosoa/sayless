@@ -2,9 +2,11 @@
 
 import { useRef, useState, useTransition } from "react";
 import { lookupGuest, submitRsvp } from "@/app/actions";
+import { DietFields } from "@/components/diet-fields";
+import { dietText } from "@/lib/diet";
 import type { Guest } from "@/lib/rsvp-schema";
 
-type Person = { id: string; name: string; attending: boolean };
+type Person = { id: string; name: string; attending: boolean; diet: string[]; allergies: string };
 
 // Con una sola persona, el nombre de la invitación suele ser el suyo: se propone para ahorrar un paso.
 function initialPeople(g: Guest): Person[] {
@@ -12,6 +14,8 @@ function initialPeople(g: Guest): Person[] {
     id: m.id,
     name: m.name ?? (g.passes === 1 ? g.name : ""),
     attending: m.attending ?? true,
+    diet: m.diet ?? [],
+    allergies: m.allergies ?? "",
   }));
 }
 
@@ -24,9 +28,10 @@ type Props = {
   calendarUrl?: string | null;
   deadlineLabel?: string | null;
   closed?: boolean;
+  askDiet?: boolean; // el anfitrión decide si se pregunta alimentación y alergias
 };
 
-export function Rsvp({ slug, initialCode, initialGuest, calendarUrl, deadlineLabel, closed }: Props) {
+export function Rsvp({ slug, initialCode, initialGuest, calendarUrl, deadlineLabel, closed, askDiet }: Props) {
   const [step, setStep] = useState<Step>(initialGuest ? "form" : "code");
   const [code, setCode] = useState(initialCode ?? "");
   const [guest, setGuest] = useState<Guest | null>(initialGuest ?? null);
@@ -89,7 +94,7 @@ export function Rsvp({ slug, initialCode, initialGuest, calendarUrl, deadlineLab
         attending,
         confirmedCount: answers.filter((p) => p.attending).length,
         message,
-        members: answers.map((p) => ({ id: p.id, name: p.name.trim() || null, attending: p.attending })),
+        members: answers.map((p) => ({ id: p.id, name: p.name.trim() || null, attending: p.attending, diet: p.diet, allergies: p.allergies.trim() || null })),
       });
       setStep("done");
       setTimeout(() => doneRef.current?.focus(), 0);
@@ -158,27 +163,41 @@ export function Rsvp({ slug, initialCode, initialGuest, calendarUrl, deadlineLab
           <fieldset className="people">
             <legend>¿Quiénes asistirán?</legend>
             {people.map((p, i) => (
-              <div className="person" key={p.id}>
-                <label className="person-check">
+              <div className="person-wrap" key={p.id}>
+                <div className="person">
+                  <label className="person-check">
+                    <input
+                      type="checkbox"
+                      checked={p.attending}
+                      onChange={(e) => setPeople(people.map((x, j) => (j === i ? { ...x, attending: e.target.checked } : x)))}
+                    />
+                    <span className="sr-only">Asiste: {p.name || `persona ${i + 1}`}</span>
+                  </label>
                   <input
-                    type="checkbox"
-                    checked={p.attending}
-                    onChange={(e) => setPeople(people.map((x, j) => (j === i ? { ...x, attending: e.target.checked } : x)))}
+                    type="text"
+                    className="person-name"
+                    aria-label={`Nombre de la persona ${i + 1}`}
+                    placeholder={`Nombre de la persona ${i + 1}`}
+                    maxLength={80}
+                    value={p.name}
+                    onChange={(e) => setPeople(people.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))}
                   />
-                  <span className="sr-only">Asiste: {p.name || `persona ${i + 1}`}</span>
-                </label>
-                <input
-                  type="text"
-                  className="person-name"
-                  aria-label={`Nombre de la persona ${i + 1}`}
-                  placeholder={`Nombre de la persona ${i + 1}`}
-                  maxLength={80}
-                  value={p.name}
-                  onChange={(e) => setPeople(people.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))}
-                />
+                </div>
+                {askDiet && p.attending && (
+                  <details className="person-diet">
+                    <summary>
+                      Alimentación y alergias
+                      {dietText(p.diet, p.allergies) && <em> · {dietText(p.diet, p.allergies)}</em>}
+                    </summary>
+                    <DietFields
+                      value={{ diet: p.diet, allergies: p.allergies }}
+                      onChange={(v) => setPeople(people.map((x, j) => (j === i ? { ...x, ...v } : x)))}
+                    />
+                  </details>
+                )}
               </div>
             ))}
-            <small className="people-hint">Desmarca a quien no pueda asistir.</small>
+            <small className="people-hint">Desmarca a quien no pueda asistir.{askDiet ? " La información de alimentación y alergias solo se usa para planear el menú del evento." : ""}</small>
           </fieldset>
         )}
         <div className="field">

@@ -1,6 +1,6 @@
 -- Evento de PRUEBA para sayless-dev (datos ficticios). NO correr en producción.
 -- Pegar en Supabase > SQL Editor > Run. Se puede correr varias veces: reinicia el evento y sus invitados.
--- Requiere haber corrido schema.sql y las migraciones 001–015 (la 011 solo si usarás música).
+-- Requiere haber corrido schema.sql y las migraciones 001–018 (la 011 solo si usarás música).
 --
 -- ANTES DE CORRER: cambia el correo de abajo por el correo con el que inicias sesión en la app (sayless-dev).
 -- Debes haber entrado al menos una vez (para que exista tu perfil); si no, el evento se crea sin dueño y
@@ -80,7 +80,8 @@ begin
           { "q": "¿Hasta cuándo puedo confirmar?", "a": "Hasta el 10 de mayo de 2027. Puedes cambiar tu respuesta con tu mismo código antes de esa fecha." }
         ]
       },
-      "footer": { "monogram": "A | L", "line": "12 · 06 · 2027 · Colima" }
+      "footer": { "monogram": "A | L", "line": "12 · 06 · 2027 · Colima" },
+      "rsvp": { "ask_diet": true }
     }
     $json$::jsonb,
     $json$
@@ -142,6 +143,14 @@ begin
   from (values (1, 'John Carter'), (2, 'Emily Carter')) as x(pos, name),
        public.guests g
   where g.event_id = v_event and g.name = 'John & Emily Carter' and m.guest_id = g.id and m.position = x.pos;
+
+  -- Alimentación y alergias de ejemplo (requiere la migración 018).
+  update public.guest_members m set diet = array['vegetarian'], allergies = 'Nueces'
+  from public.guests g where g.event_id = v_event and g.name = 'Familia Pérez' and m.guest_id = g.id and m.position = 2;
+  update public.guest_members m set diet = array['gluten_free', 'dairy_free']
+  from public.guests g where g.event_id = v_event and g.name = 'Familia Ramírez' and m.guest_id = g.id and m.position = 1;
+  update public.guest_members m set allergies = 'Mariscos'
+  from public.guests g where g.event_id = v_event and g.name = 'John & Emily Carter' and m.guest_id = g.id and m.position = 2;
 
   -- Mensajes y fechas de respuesta (no los toca el recálculo).
   update public.guests set message = '¡Ahí estaremos, felicidades!', confirmed_at = now() - interval '2 days' where event_id = v_event and name = 'Familia Ramírez';

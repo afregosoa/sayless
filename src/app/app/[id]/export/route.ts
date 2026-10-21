@@ -1,5 +1,6 @@
 import { getCurrentUser } from "@/lib/auth";
 import { toCsv } from "@/lib/csv";
+import { DIET_LABELS, cleanDiet, dietText } from "@/lib/diet";
 import { peopleSummary, tableSummary } from "@/lib/seating";
 import { supabaseUser } from "@/lib/supabase/server";
 
@@ -19,7 +20,7 @@ export async function GET(req: Request, ctx: RouteContext<"/app/[id]/export">) {
       .eq("event_id", id)
       .order("name"),
     supabase.from("event_tables").select("id, name").eq("event_id", id),
-    supabase.from("guest_members").select("id, guest_id, position, name, attending, table_id").eq("event_id", id).order("position"),
+    supabase.from("guest_members").select("id, guest_id, position, name, attending, table_id, diet, allergies").eq("event_id", id).order("position"),
   ]);
   if (error || !data) return new Response("Error al exportar", { status: 500 });
 
@@ -30,10 +31,11 @@ export async function GET(req: Request, ctx: RouteContext<"/app/[id]/export">) {
 
   const rows = porPersona
     ? [
-        ["Invitación", "Código", "Persona", "Estado", "Mesa"],
+        ["Invitación", "Código", "Persona", "Estado", "Mesa", "Alimentación", "Alergias"],
         ...data.flatMap((g) =>
           (membersByGuest.get(g.id) ?? []).map((m) => [
             g.name, g.code, m.name ?? `Lugar ${m.position}`, estado(m.attending), m.table_id ? tableName.get(m.table_id) : "",
+            cleanDiet(m.diet).map((d) => DIET_LABELS[d]).join("; "), m.allergies ?? "",
           ]),
         ),
       ]

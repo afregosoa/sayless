@@ -18,6 +18,7 @@ export type BoardTable = {
 };
 export type BoardPerson = {
   id: string; guestId: string; guestName: string; name: string | null; position: number; attending: boolean | null; tableId: string | null;
+  note: string; // alimentación y alergias, ya en texto (vacío si no hay)
 };
 export type BoardItem = LayoutItem;
 
@@ -322,7 +323,7 @@ export function SeatingBoard({ eventId, eventTitle, fileName, tables, people, it
     try {
       const { buildSeatingPdf } = await import("@/lib/seating-pdf");
       const tableName = new Map(tables.map((t) => [t.id, t.name]));
-      const toPdf = (p: BoardPerson) => ({ label: label(p), initials: initials(p), hue: hue(p.guestId), attending: p.attending });
+      const toPdf = (p: BoardPerson) => ({ label: label(p), initials: initials(p), hue: hue(p.guestId), attending: p.attending, note: p.note });
       const bytes = await buildSeatingPdf({
         title: eventTitle,
         tables: tables.map((t) => {
@@ -538,7 +539,7 @@ export function SeatingBoard({ eventId, eventTitle, fileName, tables, people, it
               {over > 0 && <small className="adm-err">Sobrecupo: {over} {over === 1 ? "persona" : "personas"} de más.</small>}
               {here.length === 0 ? <p className="adm-hint">Sin invitados.</p> : (
                 <ul className="sb-names">
-                  {seated.map((p) => <li key={p.id}><span className="sb-dot" style={{ ["--h" as string]: hue(p.guestId) }} />{label(p)}{p.attending === null && <em> · por confirmar</em>}</li>)}
+                  {seated.map((p) => <li key={p.id}><span className="sb-dot" style={{ ["--h" as string]: hue(p.guestId) }} />{label(p)}{p.attending === null && <em> · por confirmar</em>}{p.note && <em className="sb-note"> · {p.note}</em>}</li>)}
                   {declined.map((p) => <li key={p.id} className="sb-no">{label(p)} · no asiste</li>)}
                 </ul>
               )}

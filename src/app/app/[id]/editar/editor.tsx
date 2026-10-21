@@ -539,6 +539,17 @@ export function Editor({ eventId, initial, publicPath, isPublished }: {
             )} />
         </Panel>
 
+        <Panel title="Confirmación de asistencia">
+          <label className="adm-check">
+            <input type="checkbox" checked={!!c.rsvp?.ask_diet} onChange={(e) => setContent({ rsvp: { ask_diet: e.target.checked } })} />
+            Preguntar a cada invitado su alimentación y alergias
+          </label>
+          <p className="adm-hint">
+            Son datos de salud: el invitado ve que solo se usan para planear el menú, y se borran junto con el resto de los datos de invitados.
+            Verás un resumen para el menú en la página del evento.
+          </p>
+        </Panel>
+
         <Panel title="Pie de página">
           <div className="adm-grid">
             <Text label="Monograma" max={20} value={c.footer?.monogram ?? ""} placeholder="I | A"

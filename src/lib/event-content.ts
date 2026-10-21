@@ -53,6 +53,8 @@ export const contentSchema = z.object({
     items: z.array(z.object({ q: str(200), a: str(1200) })).max(20).default([]),
   }).optional(),
   footer: z.object({ monogram: str(20), line: str(120) }).optional(),
+  // Confirmación de asistencia: ¿se pregunta alimentación y alergias? (datos de salud: solo si el anfitrión lo activa)
+  rsvp: z.object({ ask_diet: z.boolean().default(false) }).optional(),
   // El cliente sube su propio MP3 y declara tener derecho a usarlo (ver /terminos).
   music: z.object({
     enabled: flag,

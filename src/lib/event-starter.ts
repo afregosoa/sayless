@@ -52,5 +52,6 @@ export function starterContent(title: string, type: EventType): EventContent {
     gifts: { enabled: false, body: "", button_label: "Ver mesa de regalos" },
     lodging: { enabled: false, items: [] },
     faq: { enabled: false, items: [] },
+    rsvp: { ask_diet: true },
   };
 }

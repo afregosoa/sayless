@@ -7,6 +7,7 @@ import { eventAccess } from "@/lib/access";
 import { auditSupportView } from "@/lib/audit";
 import { requireUser } from "@/lib/auth";
 import { isEventMember } from "@/lib/membership";
+import { dietText } from "@/lib/diet";
 import { takesSeat } from "@/lib/seating";
 import type { ItemKind, TableShape } from "@/lib/salon";
 import { supabaseUser } from "@/lib/supabase/server";
@@ -59,7 +60,7 @@ async function Content({ params, searchParams }: {
   const [{ data: tablesRaw, error: tablesError }, { data: guestsRaw }, { data: membersRaw }, { data: itemsRaw, error: itemsError }] = await Promise.all([
     supabase.from("event_tables").select("id, name, capacity, position, x, y, shape, rotation").eq("event_id", event.id).order("position"),
     supabase.from("guests").select("id, name").eq("event_id", event.id).order("name"),
-    supabase.from("guest_members").select("id, guest_id, position, name, attending, table_id").eq("event_id", event.id).order("position"),
+    supabase.from("guest_members").select("id, guest_id, position, name, attending, table_id, diet, allergies").eq("event_id", event.id).order("position"),
     supabase.from("event_layout_items").select("id, kind, label, x, y, w, h, rotation").eq("event_id", event.id).order("created_at"),
   ]);
   if (tablesError || itemsError) {
@@ -93,7 +94,7 @@ async function Content({ params, searchParams }: {
 
   const boardPeople: BoardPerson[] = members.map((m) => ({
     id: m.id, guestId: m.guest_id, guestName: groupName.get(m.guest_id) ?? "", name: m.name,
-    position: m.position, attending: m.attending, tableId: m.table_id,
+    position: m.position, attending: m.attending, tableId: m.table_id, note: dietText(m.diet, m.allergies),
   }));
 
   const stats: [string, number, string?][] = [

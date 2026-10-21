@@ -23,6 +23,7 @@ import { addDays, contentSchema, formatDay } from "@/lib/event-content";
 import { RETENTION_DAYS, retentionEnabled } from "@/lib/retention";
 import { isReadyToPublish, publishChecklist } from "@/lib/publish-checklist";
 import { peopleSummary, tableSummary } from "@/lib/seating";
+import { DIETS, DIET_LABELS, cleanDiet, dietText } from "@/lib/diet";
 
 export const metadata: Metadata = {
   title: "Invitados",
@@ -138,10 +139,10 @@ async function AdminContent({
   const guests = data ?? [];
   const [{ data: tableRows }, { data: memberRows }] = await Promise.all([
     supabase.from("event_tables").select("id, name").eq("event_id", event.id),
-    supabase.from("guest_members").select("id, guest_id, name, attending, table_id").eq("event_id", event.id).order("position"),
+    supabase.from("guest_members").select("id, guest_id, name, attending, table_id, diet, allergies").eq("event_id", event.id).order("position"),
   ]);
   const tableName = new Map((tableRows ?? []).map((t) => [t.id, t.name]));
-  const membersByGuest = new Map<string, { id: string; name: string | null; attending: boolean | null; table_id: string | null }[]>();
+  const membersByGuest = new Map<string, { id: string; name: string | null; attending: boolean | null; table_id: string | null; diet: string[]; allergies: string | null }[]>();
   for (const m of memberRows ?? []) membersByGuest.set(m.guest_id, [...(membersByGuest.get(m.guest_id) ?? []), m]);
 
   const content = contentSchema.safeParse(event.content);
@@ -166,6 +167,14 @@ async function AdminContent({
   const pending = guests.filter((g) => g.attending === null);
   const sum = (xs: { passes?: number; confirmed_count?: number | null }[], k: "passes" | "confirmed_count") =>
     xs.reduce((n, g) => n + (g[k] ?? 0), 0);
+
+  // Resumen para el menú: quienes asisten (o aún no responden), con su alimentación y alergias.
+  const askDiet = content.success ? !!content.data.rsvp?.ask_diet : false;
+  const guestName = new Map(guests.map((g) => [g.id, g.name]));
+  const eaters = (memberRows ?? []).filter((m) => m.attending !== false);
+  const dietCounts = DIETS.map((d) => [d, eaters.filter((m) => cleanDiet(m.diet).includes(d)).length] as const).filter(([, n]) => n > 0);
+  const allergyList = eaters.filter((m) => m.allergies?.trim());
+  const showDietCard = askDiet || dietCounts.length > 0 || allergyList.length > 0;
 
   const stats: [string, number, string?][] = [
     ["Personas confirmadas", sum(going, "confirmed_count"), `de ${sum(guests, "passes")} pases`],
@@ -260,6 +269,37 @@ async function AdminContent({
         ))}
       </div>
 
+      {showDietCard && (
+        <div className="adm-card" aria-labelledby="menu-h">
+          <h2 id="menu-h">Resumen para el menú</h2>
+          {dietCounts.length === 0 && allergyList.length === 0 ? (
+            <p className="adm-hint">Aún nadie ha indicado preferencias alimentarias ni alergias.</p>
+          ) : (
+            <>
+              <p className="adm-hint">Cuenta a quienes asisten o aún no responden.</p>
+              {dietCounts.length > 0 && (
+                <ul className="adm-diet-counts">
+                  {dietCounts.map(([d, n]) => <li key={d}><b>{n}</b> {DIET_LABELS[d]}</li>)}
+                </ul>
+              )}
+              {allergyList.length > 0 && (
+                <>
+                  <h3 className="adm-sub">Alergias y notas ({allergyList.length})</h3>
+                  <ul className="adm-plain">
+                    {allergyList.map((m) => (
+                      <li key={m.id}>
+                        <b>{m.name ?? `Lugar de ${guestName.get(m.guest_id) ?? "invitación"}`}</b>{" "}
+                        <small className="adm-hint">({guestName.get(m.guest_id)})</small>: {m.allergies}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
       <div className="adm-two">
         <AddGuestForm eventId={event.id} />
         <ImportForm eventId={event.id} />
@@ -292,6 +332,9 @@ async function AdminContent({
                     <b>{g.name}</b>
                     <small>{g.code}{g.phone ? ` · ${g.phone}` : ""}</small>
                     <small>{peopleSummary(membersByGuest.get(g.id) ?? [], g.passes)}</small>
+                    {(membersByGuest.get(g.id) ?? []).filter((m) => m.attending !== false && dietText(m.diet, m.allergies)).map((m) => (
+                      <small key={m.id} className="adm-diet-line">{m.name ?? "Sin nombre"}: {dietText(m.diet, m.allergies)}</small>
+                    ))}
                   </td>
                   <td data-label="Pases">{g.passes}</td>
                   <td data-label="Estado">
@@ -309,7 +352,7 @@ async function AdminContent({
                     {g.attending === null && (
                       <a className="adm-link" target="_blank" rel="noopener" href={wa(remind)}>Recordar</a>
                     )}
-                    <EditGuest eventId={event.id} guest={{ id: g.id, name: g.name, passes: g.passes, phone: g.phone }} members={membersByGuest.get(g.id) ?? []} />
+                    <EditGuest eventId={event.id} guest={{ id: g.id, name: g.name, passes: g.passes, phone: g.phone }} members={membersByGuest.get(g.id) ?? []} askDiet={askDiet} />
                     <DeleteButton id={g.id} eventId={event.id} name={g.name} />
                   </td>
                 </tr>

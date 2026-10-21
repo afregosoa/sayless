@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DIETS } from "./diet";
 
 export const codeSchema = z.string().trim().regex(/^[A-Za-z0-9]{4,12}$/);
 
@@ -7,6 +8,8 @@ export const memberInputSchema = z.object({
   id: z.uuid(),
   name: z.string().trim().max(80),
   attending: z.boolean(),
+  diet: z.array(z.enum(DIETS)).max(DIETS.length).default([]),
+  allergies: z.string().trim().max(200).default(""),
 });
 
 export const rsvpSchema = z.object({
@@ -16,7 +19,7 @@ export const rsvpSchema = z.object({
   message: z.string().trim().max(500),
 });
 
-export type GuestMember = { id: string; name: string | null; attending: boolean | null };
+export type GuestMember = { id: string; name: string | null; attending: boolean | null; diet: string[]; allergies: string | null };
 
 export type Guest = {
   name: string;

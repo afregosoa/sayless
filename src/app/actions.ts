@@ -52,12 +52,19 @@ export async function submitRsvp(
     return { ok: false, error: "Escribe el nombre de cada persona que asistirá." };
   }
 
+  const askDiet = !!event.content.rsvp?.ask_diet;
+
   // service_role: el invitado no tiene sesión. Un trigger de la base de datos recalcula attending y confirmed_count.
   const db = supabaseAdmin();
   const results = await Promise.all(
     members.map((m) =>
       db.from("guest_members")
-        .update({ name: m.name || null, attending: m.attending })
+        .update({
+          name: m.name || null,
+          attending: m.attending,
+          // Solo si el anfitrión activó la pregunta: si no, no se pisa lo que ya hubiera.
+          ...(askDiet ? { diet: m.attending ? m.diet : [], allergies: m.attending ? m.allergies || null : null } : {}),
+        })
         .eq("id", m.id)
         .eq("guest_id", guest.id),
     ),

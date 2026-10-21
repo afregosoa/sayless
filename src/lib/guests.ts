@@ -36,7 +36,7 @@ export async function findGuest(
 
   const { data: members } = await supabaseAdmin()
     .from("guest_members")
-    .select("id, name, attending")
+    .select("id, name, attending, diet, allergies")
     .eq("guest_id", data.id)
     .order("position");
 

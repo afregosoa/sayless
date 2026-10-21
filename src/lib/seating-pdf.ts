@@ -3,7 +3,7 @@
 import { PDFDocument, rgb, StandardFonts, type PDFFont, type PDFPage } from "pdf-lib";
 import { ITEM_INFO, SEAT, tableGeometry, type ItemKind, type TableShape } from "./salon";
 
-export type PdfPerson = { label: string; initials: string; hue: number; attending: boolean | null };
+export type PdfPerson = { label: string; initials: string; hue: number; attending: boolean | null; note?: string };
 export type PdfTable = {
   name: string; capacity: number; x: number; y: number; shape: TableShape; rotation: number; people: PdfPerson[];
 };
@@ -187,7 +187,7 @@ export async function buildSeatingPdf(input: PdfInput): Promise<Uint8Array> {
   const colX = () => M + col * (COLW + GAP);
 
   newPage("Listado por mesa");
-  const block = (title: string, count: string, rows: { text: string; muted?: boolean; hue?: number }[], over = false) => {
+  const block = (title: string, count: string, rows: { text: string; note?: string; muted?: boolean; hue?: number }[], over = false) => {
     room(16 + 12);
     text(page!, title, colX(), y, 10.5, bold, over ? rgb(0.72, 0.25, 0.2) : ink);
     text(page!, count, colX() + COLW, y + 1, 8.5, font, muted, "right");
@@ -201,6 +201,10 @@ export async function buildSeatingPdf(input: PdfInput): Promise<Uint8Array> {
       while (shown.length > 1 && font.widthOfTextAtSize(shown, 9) > COLW - 10) shown = shown.slice(0, -1);
       text(page!, shown === label ? shown : `${shown.trimEnd()}…`, colX() + 10, y, 9, font, r.muted ? muted : ink);
       y += 11.5;
+      if (r.note) { // alimentación y alergias, en una línea aparte y más pequeña
+        const lines = wrap(font, clean(font, r.note), 7.5, COLW - 14, 2);
+        for (const l of lines) { room(10); text(page!, l, colX() + 14, y - 1, 7.5, font, rgb(0.62, 0.3, 0.2)); y += 9.5; }
+      }
     }
     y += 8;
   };
@@ -208,12 +212,12 @@ export async function buildSeatingPdf(input: PdfInput): Promise<Uint8Array> {
   for (const t of input.tables) {
     const rows = t.people.map((p) => (p.attending === false
       ? { text: `${p.label} (no asiste)`, muted: true }
-      : { text: p.attending === null ? `${p.label} (por confirmar)` : p.label, hue: p.hue }));
+      : { text: p.attending === null ? `${p.label} (por confirmar)` : p.label, note: p.note, hue: p.hue }));
     const n = t.people.filter(seated).length;
     block(t.name, `${n}/${t.capacity}`, rows.length ? rows : [{ text: "Sin invitados", muted: true }], n > t.capacity);
   }
   if (input.unseated.length) {
-    block("Sin mesa", `${input.unseated.length}`, input.unseated.map((p) => ({ text: p.attending === null ? `${p.label} (por confirmar)` : p.label, hue: p.hue })));
+    block("Sin mesa", `${input.unseated.length}`, input.unseated.map((p) => ({ text: p.attending === null ? `${p.label} (por confirmar)` : p.label, note: p.note, hue: p.hue })));
   }
 
   // Listado alfabético: para consultar rápido "¿en qué mesa está…?" (por ejemplo, en la entrada).

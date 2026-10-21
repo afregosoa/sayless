@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { DietFields, type DietValue } from "@/components/diet-fields";
+import { dietText } from "@/lib/diet";
 import { deleteGuest, updateGuest } from "./actions";
 
 export function CopyLink({ url }: { url: string }) {
@@ -40,12 +42,27 @@ export function DeleteButton({ id, eventId, name }: { id: string; eventId: strin
   );
 }
 
-export type EditableMember = { id: string; name: string | null; attending: boolean | null };
+export type EditableMember = { id: string; name: string | null; attending: boolean | null; diet: string[]; allergies: string | null };
 
-export function EditGuest({ eventId, guest, members }: {
+// Alimentación de una persona dentro del formulario de edición: se envía en campos ocultos.
+function MemberDiet({ member }: { member: EditableMember }) {
+  const [value, setValue] = useState<DietValue>({ diet: member.diet, allergies: member.allergies ?? "" });
+  const summary = dietText(value.diet, value.allergies);
+  return (
+    <details className="adm-diet">
+      <summary>Alimentación y alergias{summary && <em> · {summary}</em>}</summary>
+      <input type="hidden" name={`m_${member.id}_diet`} value={value.diet.join(",")} />
+      <input type="hidden" name={`m_${member.id}_allergies`} value={value.allergies} />
+      <DietFields value={value} onChange={setValue} />
+    </details>
+  );
+}
+
+export function EditGuest({ eventId, guest, members, askDiet }: {
   eventId: string;
   guest: { id: string; name: string; passes: number; phone: string | null };
   members: EditableMember[];
+  askDiet: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,13 +91,16 @@ export function EditGuest({ eventId, guest, members }: {
       <fieldset className="adm-people">
         <legend>Personas</legend>
         {members.map((m, i) => (
-          <div className="adm-person" key={m.id}>
-            <input name={`m_${m.id}_name`} defaultValue={m.name ?? ""} maxLength={80} placeholder={`Persona ${i + 1} (sin nombre)`} aria-label={`Nombre de la persona ${i + 1}`} />
-            <select name={`m_${m.id}_att`} defaultValue={m.attending === true ? "1" : m.attending === false ? "0" : ""} aria-label={`Asistencia de la persona ${i + 1}`}>
-              <option value="">Sin respuesta</option>
-              <option value="1">Asiste</option>
-              <option value="0">No asiste</option>
-            </select>
+          <div className="adm-person-wrap" key={m.id}>
+            <div className="adm-person">
+              <input name={`m_${m.id}_name`} defaultValue={m.name ?? ""} maxLength={80} placeholder={`Persona ${i + 1} (sin nombre)`} aria-label={`Nombre de la persona ${i + 1}`} />
+              <select name={`m_${m.id}_att`} defaultValue={m.attending === true ? "1" : m.attending === false ? "0" : ""} aria-label={`Asistencia de la persona ${i + 1}`}>
+                <option value="">Sin respuesta</option>
+                <option value="1">Asiste</option>
+                <option value="0">No asiste</option>
+              </select>
+            </div>
+            {askDiet && <MemberDiet member={m} />}
           </div>
         ))}
         <small className="adm-hint">Si cambias los pases, se agregan o quitan personas al guardar. Vuelve a abrir “Editar” para verlas.</small>
