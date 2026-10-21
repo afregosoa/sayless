@@ -174,8 +174,8 @@ function RotateButtons({ value, onChange }: { value: number; onChange: (v: numbe
 }
 
 // ── Tablero ──
-export function SeatingBoard({ eventId, tables, people, items: initialItems }: {
-  eventId: string; tables: BoardTable[]; people: BoardPerson[]; items: BoardItem[];
+export function SeatingBoard({ eventId, eventTitle, fileName, tables, people, items: initialItems }: {
+  eventId: string; eventTitle: string; fileName: string; tables: BoardTable[]; people: BoardPerson[]; items: BoardItem[];
 }) {
   // Personas: estado local para que el movimiento se vea al instante; el servidor confirma y, si falla, se revierte.
   const serverKey = people.map((p) => `${p.id}:${p.tableId ?? ""}`).join("|");
@@ -314,6 +314,40 @@ export function SeatingBoard({ eventId, tables, people, items: initialItems }: {
     start(() => guard(() => saveTablePositions(eventId, Object.entries(spots).map(([id, p]) => ({ id, ...p }))), () => setOverrides(before)));
   }
 
+  // PDF con el plano (dibujo) y los listados. Se arma en el navegador con lo que se ve en pantalla, aunque aún se esté guardando.
+  const [exporting, setExporting] = useState(false);
+  async function exportPdf() {
+    setExporting(true);
+    setMessage(null);
+    try {
+      const { buildSeatingPdf } = await import("@/lib/seating-pdf");
+      const tableName = new Map(tables.map((t) => [t.id, t.name]));
+      const toPdf = (p: BoardPerson) => ({ label: label(p), initials: initials(p), hue: hue(p.guestId), attending: p.attending });
+      const bytes = await buildSeatingPdf({
+        title: eventTitle,
+        tables: tables.map((t) => {
+          const l = looks.get(t.id)!;
+          return { name: t.name, capacity: t.capacity, x: l.x ?? 0, y: l.y ?? 0, shape: l.shape, rotation: l.rotation, people: current.filter((p) => p.tableId === t.id).map(toPdf) };
+        }),
+        items: items.map((i) => ({ kind: i.kind, label: i.label, x: i.x, y: i.y, w: i.w, h: i.h, rotation: i.rotation })),
+        unseated: unseated.map(toPdf),
+        everyone: current.filter(takesSeat).map((p) => ({ name: label(p), table: p.tableId ? tableName.get(p.tableId) ?? null : null })),
+      });
+      const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: "application/pdf" }));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${fileName}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    } catch {
+      setMessage("No se pudo generar el PDF. Intenta de nuevo.");
+    } finally {
+      setExporting(false);
+    }
+  }
+
   function moveSelected(dx: number, dy: number) {
     if (!selection) return;
     if (selection.kind === "table") {
@@ -406,6 +440,9 @@ export function SeatingBoard({ eventId, tables, people, items: initialItems }: {
           <button type="button" aria-pressed={mode === "sentar"} onClick={() => { setMode("sentar"); setSelection(null); }}>Sentar personas</button>
           <button type="button" aria-pressed={mode === "salon"} onClick={() => setMode("salon")}>Acomodar salón</button>
         </div>
+        <button type="button" className="adm-btn adm-ghost" onClick={exportPdf} disabled={exporting}>
+          {exporting ? "Generando PDF…" : "Descargar PDF"}
+        </button>
         {mode === "salon" && (
           <div className="sc-tools">
             <select className="adm-select" aria-label="Agregar elemento del salón" value="" onChange={(e) => { if (e.target.value) addItem(e.target.value as ItemKind); }}>

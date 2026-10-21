@@ -215,6 +215,8 @@ async function Content({ params, searchParams }: {
       ) : (
         <SeatingBoard
           eventId={event.id}
+          eventTitle={event.title}
+          fileName={`plano-de-mesas-${event.slug}`}
           tables={tables.map((t) => ({
             id: t.id, name: t.name, capacity: t.capacity, x: t.x === null ? null : Number(t.x), y: t.y === null ? null : Number(t.y),
             shape: t.shape as TableShape, rotation: t.rotation,
