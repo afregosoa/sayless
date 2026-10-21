@@ -9,6 +9,7 @@ import { requireUser } from "@/lib/auth";
 import { contentSchema, themeSchema } from "@/lib/event-content";
 import { DEFAULT_THEME, starterContent, type EventType } from "@/lib/event-starter";
 import { supabaseUser } from "@/lib/supabase/server";
+import { isTemplateId } from "@/templates/catalog";
 import { Editor } from "./editor";
 
 export const metadata: Metadata = { title: "Editar invitación", robots: { index: false, follow: false } };
@@ -31,7 +32,7 @@ async function Load({ params }: { params: PageProps<"/app/[id]/editar">["params"
   const supabase = await supabaseUser();
   const { data: event } = await supabase
     .from("events")
-    .select("id, title, slug, type, status, event_date, rsvp_deadline, content, theme, owner_id, support_access_until")
+    .select("id, title, slug, type, status, template, event_date, rsvp_deadline, content, theme, owner_id, support_access_until")
     .eq("id", id)
     .maybeSingle();
   if (!event) notFound();
@@ -61,7 +62,9 @@ async function Load({ params }: { params: PageProps<"/app/[id]/editar">["params"
       </header>
       <Editor
         eventId={event.id}
+        eventType={event.type as EventType}
         initial={{
+          template: isTemplateId(event.template) ? event.template : "editorial",
           title: event.title,
           eventDate: event.event_date,
           rsvpDeadline: event.rsvp_deadline,

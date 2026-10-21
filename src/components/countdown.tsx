@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
-export function Countdown({ target }: { target: number }) {
+export function Countdown({ target, className = "count" }: { target: number; className?: string }) {
   const [now, setNow] = useState<number | null>(null);
 
   useEffect(() => {
@@ -23,7 +23,7 @@ export function Countdown({ target }: { target: number }) {
   ];
 
   return (
-    <div className="count" aria-live="off">
+    <div className={className} aria-live="off">
       {parts.map(([value, label]) => (
         <div key={label}>
           <b>{value}</b>

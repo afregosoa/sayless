@@ -48,6 +48,13 @@ export function MusicPlayer({ src, title, label, cover, eventTitle, preview, sta
     setPlaying(false);
   }, []);
 
+  // Una plantilla con su propia apertura (p. ej. el sobre) avisa con este evento: ya hubo un toque, se puede reproducir.
+  useEffect(() => {
+    const onPlay = () => { setCovered(false); void play(); };
+    window.addEventListener("sayless:play", onPlay);
+    return () => window.removeEventListener("sayless:play", onPlay);
+  }, [play]);
+
   // Con la pantalla de apertura visible no se puede desplazar la página.
   useEffect(() => {
     if (!covered) return;

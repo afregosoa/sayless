@@ -31,9 +31,10 @@ type Props = {
   deadlineLabel?: string | null;
   closed?: boolean;
   askDiet?: boolean; // el anfitrión decide si se pregunta alimentación y alergias
+  demo?: boolean;    // vista de muestra del catálogo: no guarda nada
 };
 
-export function Rsvp({ slug, initialCode, initialGuest, calendar, deadlineLabel, closed, askDiet }: Props) {
+export function Rsvp({ slug, initialCode, initialGuest, calendar, deadlineLabel, closed, askDiet, demo }: Props) {
   const [step, setStep] = useState<Step>(initialGuest ? "form" : "code");
   const [code, setCode] = useState(initialCode ?? "");
   const [guest, setGuest] = useState<Guest | null>(initialGuest ?? null);
@@ -85,7 +86,7 @@ export function Rsvp({ slug, initialCode, initialGuest, calendar, deadlineLabel,
       return;
     }
     startTransition(async () => {
-      const res = await submitRsvp({ slug, code, members: answers, message });
+      const res = demo ? ({ ok: true } as const) : await submitRsvp({ slug, code, members: answers, message });
       if (!res.ok) {
         setError(res.error);
         return;

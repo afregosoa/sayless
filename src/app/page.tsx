@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
 import { EventShowcase } from "@/components/landing/event-showcase";
@@ -6,6 +7,7 @@ import { Logo } from "@/components/landing/logo";
 import { Reveal } from "@/components/landing/reveal";
 import { SignupForm } from "@/components/landing/signup-form";
 import { Volcano } from "@/components/landing/volcano";
+import { templatesFor } from "@/templates/catalog";
 import { getCurrentUser } from "@/lib/auth";
 import { getPriceLabel } from "@/lib/pricing";
 
@@ -51,6 +53,7 @@ export default function Home() {
           <Link href="/" className="lp-logo" aria-label="SayLess, inicio"><Logo variant="on-dark" height={40} /></Link>
           <nav aria-label="Principal">
             <a href="#funciones">Funciones</a>
+            <Link href="/plantillas">Plantillas</Link>
             <a href="#precio">Precio</a>
             <a href="#faq">Preguntas</a>
             <Suspense fallback={<Link href="/login" className="lp-btn lp-btn-sm lp-btn-light">Entrar</Link>}>
@@ -80,6 +83,26 @@ export default function Home() {
             <p className="lp-sub">Elige el tipo de evento y mira cómo la recibirían tus invitados en el celular.</p>
           </Reveal>
           <EventShowcase />
+        </section>
+
+        <section id="plantillas" className="lp-section lp-templates" aria-labelledby="plantillas-h">
+          <Reveal>
+            <p className="lp-eyebrow">Plantillas de boda</p>
+            <h2 id="plantillas-h">Diseños totalmente distintos</h2>
+            <p className="lp-sub">No son solo otros colores: cada plantilla tiene su propia forma de contar tu historia.</p>
+          </Reveal>
+          <ul className="lp-tpl-row">
+            {templatesFor("boda").map((t) => (
+              <li key={t.id}>
+                <Link href={`/plantillas/${t.id}`}>
+                  <Image src={`/templates/preview-${t.id}.jpg`} alt={`Plantilla ${t.name}`} width={280} height={495} sizes="(max-width: 700px) 44vw, 240px" />
+                  <b>{t.name}</b>
+                  <small>{t.tagline}</small>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <p className="lp-center"><Link href="/plantillas" className="lp-btn">Ver todas las plantillas</Link></p>
         </section>
 
         <section id="funciones" className="lp-section">

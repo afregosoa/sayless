@@ -5,13 +5,16 @@ import { z } from "zod";
 import { audit } from "@/lib/audit";
 import { requireUser } from "@/lib/auth";
 import { AUDIO_BUCKET, contentSchema, mediaPaths, MEDIA_BUCKET, themeSchema } from "@/lib/event-content";
+import type { EventType } from "@/lib/event-starter";
 import { supabaseUser } from "@/lib/supabase/server";
+import { isTemplateId, templatesFor } from "@/templates/catalog";
 
 export type SaveResult = { ok: true } | { ok: false; error: string };
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable();
 
 const payloadSchema = z.object({
+  template: z.string(),
   title: z.string().trim().min(2).max(120),
   eventDate: isoDate,
   rsvpDeadline: isoDate,
@@ -29,7 +32,7 @@ export async function saveEvent(eventId: string, input: unknown): Promise<SaveRe
     const issue = parsed.error.issues[0];
     return { ok: false, error: `Revisa el campo "${issue.path.join(" › ")}": ${issue.message}` };
   }
-  const { title, eventDate, rsvpDeadline, content, theme } = parsed.data;
+  const { title, eventDate, rsvpDeadline, content, theme, template } = parsed.data;
 
   // Las fotos referenciadas deben vivir en la carpeta de ESTE evento.
   const referenced = mediaPaths(content);
@@ -40,6 +43,13 @@ export async function saveEvent(eventId: string, input: unknown): Promise<SaveRe
   // Con la sesión del usuario: RLS solo permite editar eventos propios, y los GRANT de
   // columnas impiden tocar status, pago o slug.
   const supabase = await supabaseUser();
+
+  // La plantilla debe existir y estar disponible para el tipo de este evento.
+  const { data: meta } = await supabase.from("events").select("type").eq("id", eventId).maybeSingle();
+  if (!meta) return { ok: false, error: "No tienes permiso para editar este evento." };
+  if (!isTemplateId(template) || !templatesFor(meta.type as EventType).some((t) => t.id === template)) {
+    return { ok: false, error: "Esa plantilla no está disponible para este tipo de evento." };
+  }
 
   // Música: el MP3 debe ser de este evento y el cliente debe haber declarado que tiene derecho a usarlo.
   // La fecha de aceptación la fija el servidor (no el navegador) y queda en el registro de actividad.
@@ -66,7 +76,7 @@ export async function saveEvent(eventId: string, input: unknown): Promise<SaveRe
 
   const { data, error } = await supabase
     .from("events")
-    .update({ title, event_date: eventDate, rsvp_deadline: rsvpDeadline, content, theme })
+    .update({ title, event_date: eventDate, rsvp_deadline: rsvpDeadline, content, theme, template })
     .eq("id", eventId)
     .select("id, slug");
   if (error) return { ok: false, error: "No se pudo guardar. Intenta de nuevo." };

@@ -9,11 +9,11 @@ import { CreateEventForm } from "./create-event-form";
 
 export const metadata: Metadata = { title: "Mis eventos", robots: { index: false, follow: false } };
 
-export default function AppHome() {
+export default function AppHome(props: PageProps<"/app">) {
   return (
     <main className="admin">
       <Suspense fallback={<p>Cargando…</p>}>
-        <Events />
+        <Events searchParams={props.searchParams} />
       </Suspense>
     </main>
   );
@@ -21,8 +21,9 @@ export default function AppHome() {
 
 const STATUS: Record<string, string> = { draft: "Borrador", published: "Publicado", closed: "Cerrado" };
 
-async function Events() {
+async function Events({ searchParams }: { searchParams: PageProps<"/app">["searchParams"] }) {
   const user = await requireUser();
+  const { plantilla } = await searchParams; // preselecciona la plantilla elegida en el catálogo público
   const supabase = await supabaseUser();
   // RLS: un cliente solo recibe sus eventos (el superadmin ve los suyos aquí y todos en /admin).
   // Eventos propios + eventos donde soy colaborador (RLS no devuelve nada más a un cliente).
@@ -62,7 +63,7 @@ async function Events() {
         <p className="adm-hint">Aún no tienes eventos. Crea el primero.</p>
       )}
 
-      <CreateEventForm />
+      <CreateEventForm initialTemplate={typeof plantilla === "string" ? plantilla : undefined} />
     </>
   );
 }

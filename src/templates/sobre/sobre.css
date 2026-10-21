@@ -1,0 +1,105 @@
+/* Plantilla "Sobre y sello": dorado y rosa, caligrafía y papel. Usa solo los colores del tema (paper, ink, muted, accent, line, card). */
+.t-sobre{--gold:var(--accent);--rose:color-mix(in srgb,var(--accent) 35%,#d9a3a0);font-family:var(--tpl-body,var(--body));background:var(--paper)}
+.t-sobre .so-wrap{max-width:680px;margin:0 auto;padding-bottom:40px}
+.t-sobre .so-script{font-family:var(--tpl-script,var(--script));color:var(--gold);font-size:1.25em;line-height:1;white-space:nowrap}
+.t-sobre .so-flourish{display:block;width:150px;margin:14px auto;color:var(--gold)}
+
+/* ── Sobre ── */
+.so-overlay{position:fixed;inset:0;z-index:200;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;padding:24px;
+  background:radial-gradient(120% 90% at 50% 20%,color-mix(in srgb,var(--paper) 88%,#fff),color-mix(in srgb,var(--accent) 16%,var(--paper)));color:var(--ink);
+  font-family:var(--tpl-body,var(--body));transition:opacity .7s ease .1s}
+.so-overlay[data-phase=opening]{animation:so-fade .7s ease 1.65s forwards}
+@keyframes so-fade{to{opacity:0;visibility:hidden}}
+.so-lead{font-family:var(--tpl-display,var(--display));font-style:italic;font-size:clamp(22px,5vw,30px);margin:0;max-width:none;text-align:center;letter-spacing:.01em}
+.so-tap{margin:0;font-size:12px;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);max-width:none;animation:so-pulse 2.4s ease-in-out infinite}
+.so-overlay[data-phase=opening] .so-tap{opacity:0;animation:none;transition:opacity .3s}
+@keyframes so-pulse{50%{opacity:.35}}
+.so-env{--w:min(86vw,420px);position:relative;width:var(--w);aspect-ratio:3/2;border:0;background:none;padding:0;cursor:pointer;perspective:1400px;transform-style:preserve-3d;
+  filter:drop-shadow(0 28px 30px rgba(60,40,30,.28));transition:transform 1s ease .7s}
+.so-overlay[data-phase=opening] .so-env{transform:translateY(60px) scale(1.04)}
+.so-env:focus-visible{outline:2px solid var(--gold);outline-offset:8px}
+.so-back,.so-flap,.so-card{position:absolute;display:block}
+.so-back{inset:0;background:color-mix(in srgb,var(--accent) 28%,var(--paper));border-radius:4px}
+.so-card{left:6%;right:6%;top:6%;bottom:6%;z-index:2;background:var(--card);border:1px solid var(--line);box-shadow:0 2px 8px rgba(60,40,30,.12);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;transition:transform 1s cubic-bezier(.3,.9,.3,1) .65s;padding:10px}
+.so-card small{font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:var(--muted)}
+.so-card b{font-family:var(--tpl-script,var(--script));font-weight:400;font-size:clamp(28px,8vw,42px);line-height:1.05;color:var(--gold)}
+.so-card i{font-style:normal;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink)}
+.so-overlay[data-phase=opening] .so-card{transform:translateY(-58%)}
+/* Frente del sobre: tres piezas (izquierda, derecha e inferior) que se juntan en el centro, como un sobre real. */
+.so-pl,.so-pr,.so-pb{position:absolute;inset:0;z-index:3;display:block;pointer-events:none}
+.so-pl{background:color-mix(in srgb,var(--accent) 20%,var(--paper));clip-path:polygon(0 0,50% 52%,0 100%)}
+.so-pr{background:color-mix(in srgb,var(--accent) 25%,var(--paper));clip-path:polygon(100% 0,50% 52%,100% 100%)}
+.so-pb{background:color-mix(in srgb,var(--accent) 31%,var(--paper));clip-path:polygon(0 100%,50% 52%,100% 100%)}
+.so-flap{left:0;right:0;top:0;height:58%;z-index:4;transform-origin:top center;background:linear-gradient(160deg,color-mix(in srgb,var(--accent) 12%,var(--paper)),color-mix(in srgb,var(--accent) 26%,var(--paper)));
+  clip-path:polygon(0 0,100% 0,50% 100%);transition:transform .85s ease .1s,z-index 0s linear .45s;backface-visibility:visible}
+.so-overlay[data-phase=opening] .so-flap{transform:rotateX(180deg);z-index:1}
+.so-seal{position:absolute;z-index:5;left:50%;top:58%;width:68px;height:68px;margin:-34px 0 0 -34px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(circle at 35% 30%,color-mix(in srgb,var(--gold) 55%,#fff),color-mix(in srgb,var(--gold) 80%,#4a1c1c) 70%);
+  box-shadow:inset 0 -3px 6px rgba(0,0,0,.25),0 4px 10px rgba(60,30,20,.4);color:#fff8ea;transition:opacity .3s ease .05s,transform .6s}
+.so-seal span{font-family:var(--tpl-script,var(--script));font-size:24px;line-height:1;text-shadow:0 1px 1px rgba(0,0,0,.35);white-space:nowrap}
+.so-overlay[data-phase=opening] .so-seal{opacity:0;transform:scale(.7)}
+
+/* ── Invitación ── */
+.so-hero{display:flex;flex-direction:column;align-items:center;text-align:center;padding:36px 8px 56px;gap:0}
+.so-nav{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 22px;font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--muted);margin-bottom:44px}
+.so-nav a{text-decoration:none}.so-nav a:hover{color:var(--gold)}
+.so-eyebrow{font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:var(--muted)}
+.so-names{font-family:var(--tpl-script,var(--script))!important;font-size:clamp(60px,15.5vw,120px);line-height:.95;color:var(--gold);margin-top:10px!important;font-weight:400}
+.so-date{font-size:14px;letter-spacing:.3em;text-transform:uppercase;font-weight:500}
+.so-place{font-family:var(--tpl-display,var(--display));font-style:italic;font-size:22px;color:var(--muted);margin-top:4px!important}
+.so-oval{margin-top:34px;width:min(78vw,340px);aspect-ratio:4/5;border-radius:50%/42%;overflow:hidden;border:1px solid var(--gold);padding:8px;background:var(--card);box-shadow:0 0 0 7px var(--paper),0 0 0 8px var(--line)}
+.so-oval img{width:100%;height:100%;object-fit:cover;border-radius:50%/42%;display:block}
+.t-sobre .so-btn{display:inline-flex;align-items:center;justify-content:center;min-height:46px;margin-top:30px;padding:0 28px;border:1px solid var(--gold);background:transparent;color:var(--ink);font:inherit;font-size:11px;letter-spacing:.26em;text-transform:uppercase;text-decoration:none;cursor:pointer;transition:background .25s,color .25s}
+.t-sobre .so-btn:hover{background:var(--gold);color:var(--paper)}
+.t-sobre .cal-menu{background:var(--card);border-color:var(--gold)}
+
+.so-sec{padding:44px 8px;text-align:center}
+.so-title{display:flex;flex-direction:column;align-items:center;margin-bottom:26px}
+.so-title h2{font-family:var(--tpl-display,var(--display));font-weight:400;font-size:clamp(34px,8vw,48px);line-height:1.1;margin-top:8px}
+.so-text{max-width:30em!important;margin:0 auto!important;color:var(--ink);font-size:17px;line-height:1.85}
+.so-quote{margin:28px auto 0;max-width:28em;font-family:var(--tpl-display,var(--display));font-style:italic;font-size:22px;line-height:1.6;color:var(--gold);position:relative;padding-top:26px}
+.so-quote::before{content:"“";position:absolute;top:-8px;left:50%;transform:translateX(-50%);font-size:56px;line-height:1;color:var(--rose)}
+.so-note{margin-top:20px!important;color:var(--muted);font-style:italic;font-family:var(--tpl-display,var(--display));font-size:19px}
+.so-center{text-align:center}
+
+.so-cd{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;max-width:440px;margin:0 auto}
+.so-cd div{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px solid var(--gold);border-radius:50%;background:var(--card)}
+.so-cd b{font-family:var(--tpl-display,var(--display));font-weight:500;font-size:clamp(24px,7vw,36px);line-height:1;font-variant-numeric:lining-nums tabular-nums}
+.so-cd small{font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-top:4px}
+
+.so-gallery{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px;max-width:520px;margin:0 auto}
+.so-gallery li{background:#fff;padding:10px 10px 30px;box-shadow:0 8px 20px -10px rgba(60,40,30,.45);transform:rotate(var(--tilt));transition:transform .3s}
+.so-gallery li:hover{transform:rotate(0) scale(1.03)}
+.so-gallery img{width:100%;aspect-ratio:1;object-fit:cover;display:block}
+
+.so-venues{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:18px}
+.so-card-box{position:relative;display:flex;flex-direction:column;align-items:center;gap:8px;padding:34px 22px;background:var(--card);border:1px solid var(--line);text-align:center}
+.so-card-box::before{content:"";position:absolute;inset:7px;border:1px solid color-mix(in srgb,var(--gold) 45%,transparent);pointer-events:none}
+.so-card-box h3{font-family:var(--tpl-display,var(--display));font-size:26px;line-height:1.15}
+.so-time{font-family:var(--tpl-display,var(--display));font-style:italic;font-size:24px;color:var(--gold)}
+.so-addr{color:var(--muted);font-size:15px}
+.so-link{margin-top:6px;font-size:11px;letter-spacing:.24em;text-transform:uppercase;text-decoration:none;color:var(--ink);border-bottom:1px solid var(--gold);padding-bottom:3px}
+
+.so-timeline{position:relative;max-width:460px;margin:0 auto}
+.so-timeline::before{content:"";position:absolute;left:calc(38% + 4px);top:8px;bottom:8px;width:1px;background:var(--gold);opacity:.6}
+.so-timeline li{display:grid;grid-template-columns:38% 9px 1fr;align-items:baseline;gap:18px;padding-block:14px;text-align:left}
+.so-timeline time{text-align:right;font-family:var(--tpl-display,var(--display));font-style:italic;font-size:22px;color:var(--gold)}
+.so-dot{width:9px;height:9px;border-radius:50%;background:var(--gold);align-self:center}
+
+.so-rsvp{padding-inline:0}
+.t-sobre .rsvp{background:var(--card);border:1px solid var(--line);padding:34px 22px;text-align:left;position:relative}
+.t-sobre .rsvp::before{content:"";position:absolute;inset:7px;border:1px solid color-mix(in srgb,var(--gold) 45%,transparent);pointer-events:none}
+.t-sobre .rsvp .btn:not(.ghost){background:var(--gold);border-color:var(--gold);color:#fff}
+.t-sobre .rsvp .choice button[aria-pressed=true]{background:var(--gold);border-color:var(--gold);color:#fff}
+.t-sobre .rsvp .btn:hover{background:var(--ink);border-color:var(--ink)}
+
+.so-faq-list{max-width:520px;margin:0 auto;text-align:left}
+.so-faq{border-bottom:1px solid var(--line)!important;padding-block:16px!important}
+.so-faq summary{display:flex!important;justify-content:space-between;gap:16px;cursor:pointer;font-family:var(--tpl-display,var(--display));font-size:21px}
+.so-faq summary::after{content:"+"!important;color:var(--gold);font-size:24px;line-height:1}
+.so-faq[open] summary::after{content:"–"!important}
+.so-faq p{margin-top:10px!important;color:var(--muted)}
+
+.so-footer{text-align:center;padding:30px 8px 20px}
+.so-mono{font-family:var(--tpl-script,var(--script));font-size:56px;line-height:1.1;color:var(--gold);margin:6px 0 8px!important}

@@ -6,13 +6,16 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { MAX_AUDIO_BYTES, MAX_AUDIO_MB } from "@/lib/audio-limits";
 import { compressMp3, CompressError } from "@/lib/client-audio";
 import { audioUrl, MAX_GALLERY, mediaUrl, type EventContent, type EventTheme } from "@/lib/event-content";
-import { DEFAULT_THEME } from "@/lib/event-starter";
+import { TemplatePicker } from "@/components/template-picker";
+import { DEFAULT_THEME, type EventType } from "@/lib/event-starter";
+import { TEMPLATES, type TemplateId } from "@/templates/catalog";
 import { prepareImage } from "@/lib/client-image";
 import { saveEvent } from "./actions";
 import { uploadEventAudio } from "./audio-actions";
 import { uploadEventImage } from "./media-actions";
 
 type State = {
+  template: TemplateId;
   title: string;
   eventDate: string | null;
   rsvpDeadline: string | null;
@@ -357,8 +360,8 @@ function MusicField({ eventId, music, onChange }: {
   );
 }
 
-export function Editor({ eventId, initial, publicPath, isPublished }: {
-  eventId: string; initial: State; publicPath: string; isPublished: boolean;
+export function Editor({ eventId, eventType, initial, publicPath, isPublished }: {
+  eventId: string; eventType: EventType; initial: State; publicPath: string; isPublished: boolean;
 }) {
   const [state, setState] = useState<State>(initial);
   const [savedJson, setSavedJson] = useState(() => JSON.stringify(initial));
@@ -393,6 +396,15 @@ export function Editor({ eventId, initial, publicPath, isPublished }: {
   const setColor = (mode: "light" | "dark", key: string, value: string) =>
     setState((s) => ({ ...s, theme: { ...s.theme, [mode]: { ...palette(mode), [key]: value } } }));
 
+  // Cambiar de plantilla conserva textos y fotos; solo cambia el diseño. Se pregunta si también se usan sus colores.
+  function changeTemplate(id: TemplateId) {
+    if (id === state.template) return;
+    const useColors = window.confirm(
+      `¿Usar también los colores de la plantilla «${TEMPLATES[id].name}»?\n\nAceptar: usa los colores de la plantilla.\nCancelar: conserva tus colores actuales.`,
+    );
+    setState((s) => ({ ...s, template: id, theme: useColors ? TEMPLATES[id].theme : s.theme }));
+  }
+
   function save() {
     setMsg(null);
     // Una URL vacía no es válida para el esquema: se quita.
@@ -426,6 +438,13 @@ export function Editor({ eventId, initial, publicPath, isPublished }: {
           {isPublished && <Link href={publicPath} target="_blank" className="adm-link">Ver publicada ↗</Link>}
           {msg && <span className={msg.ok ? "adm-ok" : "adm-err"} role="status">{msg.text}</span>}
         </div>
+
+        <Panel title="Plantilla">
+          <TemplatePicker type={eventType} value={state.template} onChange={changeTemplate} />
+          <p className="adm-hint">
+            Cambiar de plantilla conserva tus textos y fotos: solo cambia el diseño. Guarda los cambios para verla en la vista previa.
+          </p>
+        </Panel>
 
         <Panel title="Datos del evento">
           <div className="adm-grid">

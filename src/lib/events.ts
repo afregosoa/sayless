@@ -1,6 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { buildCalendarData, type CalendarData } from "./calendar";
+import { isTemplateId, type TemplateId } from "@/templates/catalog";
 import {
   contentSchema, themeSchema, formatDay, zonedMidnightUtc,
   type EventContent, type EventTheme,
@@ -13,15 +14,18 @@ export type PublicEvent = {
   title: string;
   status: "draft" | "published" | "closed";
   locale: string;
+  template: TemplateId;
   content: EventContent;
   theme: EventTheme;
   countdownTarget: number | null;
   deadlineLabel: string | null;
   calendar: CalendarData | null; // para "Agregar al calendario" (Google y .ics)
+  /** Solo en las vistas de muestra del catálogo (/plantillas/<id>): imágenes locales y sin guardado real. */
+  demo?: { hero?: string; gallery?: string[] };
 };
 
 export const EVENT_COLUMNS =
-  "id, slug, title, status, locale, timezone, event_date, rsvp_deadline, content, theme";
+  "id, slug, title, status, locale, template, timezone, event_date, rsvp_deadline, content, theme";
 
 type EventRow = {
   id: string;
@@ -29,6 +33,7 @@ type EventRow = {
   title: string;
   status: string;
   locale: string;
+  template: string | null;
   timezone: string;
   event_date: string | null;
   rsvp_deadline: string | null;
@@ -50,6 +55,7 @@ export function buildPublicEvent(row: EventRow): PublicEvent | null {
     title: row.title,
     status: row.status as PublicEvent["status"],
     locale: row.locale,
+    template: isTemplateId(row.template) ? row.template : "editorial", // una plantilla desconocida cae en la clásica
     content: content.data,
     theme: theme.data,
     countdownTarget: row.event_date ? zonedMidnightUtc(row.event_date, row.timezone) : null,
