@@ -145,6 +145,10 @@ async function AdminContent({
     supabase.from("guest_members").select("id, guest_id, name, attending, table_id, diet, allergies").eq("event_id", event.id).order("position"),
   ]);
   const tableName = new Map((tableRows ?? []).map((t) => [t.id, t.name]));
+  // Último aviso por invitado (migración 021). Si aún no existe la tabla, simplemente no se muestra.
+  const { data: contactRows } = await supabase.from("guest_contacts").select("guest_id, created_at").eq("event_id", event.id).order("created_at", { ascending: false });
+  const lastContact = new Map<string, string>();
+  for (const c of contactRows ?? []) if (!lastContact.has(c.guest_id)) lastContact.set(c.guest_id, c.created_at);
   const membersByGuest = new Map<string, { id: string; name: string | null; attending: boolean | null; table_id: string | null; diet: string[]; allergies: string | null }[]>();
   for (const m of memberRows ?? []) membersByGuest.set(m.guest_id, [...(membersByGuest.get(m.guest_id) ?? []), m]);
 
@@ -216,6 +220,7 @@ async function AdminContent({
         <div className="adm-actions">
           <Link className="adm-btn" href={`/app/${event.id}/editar`}>Editar invitación</Link>
           <Link className="adm-btn adm-ghost" href={`/app/${event.id}/mesas`}>Mesas</Link>
+          <Link className="adm-btn adm-ghost" href={`/app/${event.id}/recordatorios`}>Recordatorios</Link>
           {/* Descarga de archivo (route handler): debe ser un <a>, no navegación de cliente */}
           <a className="adm-btn adm-ghost" href={`/app/${event.id}/export`}>Exportar CSV</a>
           <a className="adm-btn adm-ghost" href={`/app/${event.id}/export?por=persona`}>CSV por persona</a>
@@ -363,6 +368,7 @@ async function AdminContent({
                           </small>
                         : <small className="adm-unseen">Aún no la abre</small>
                     )}
+                    {lastContact.has(g.id) && <small className="adm-unseen">Último aviso {timeAgo(lastContact.get(g.id))}</small>}
                   </td>
                   <td data-label="Mesa">{tableSummary(membersByGuest.get(g.id) ?? [], tableName) || "—"}</td>
                   <td data-label="Mensaje">{g.message ?? "—"}</td>

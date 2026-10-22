@@ -13,7 +13,7 @@ export async function GET(req: Request, ctx: RouteContext<"/app/[id]/export">) {
 
   // RLS: si el evento no es del usuario, la consulta no devuelve filas.
   const supabase = await supabaseUser();
-  const [{ data, error }, { data: tableRows }, { data: memberRows }] = await Promise.all([
+  const [{ data, error }, { data: tableRows }, { data: memberRows }, { data: contactRows }] = await Promise.all([
     supabase
       .from("guests")
       .select("id, name, code, passes, phone, attending, confirmed_count, message, confirmed_at, first_opened_at, last_opened_at, open_count")
@@ -21,12 +21,19 @@ export async function GET(req: Request, ctx: RouteContext<"/app/[id]/export">) {
       .order("name"),
     supabase.from("event_tables").select("id, name").eq("event_id", id),
     supabase.from("guest_members").select("id, guest_id, position, name, attending, table_id, diet, allergies").eq("event_id", id).order("position"),
+    supabase.from("guest_contacts").select("guest_id, created_at").eq("event_id", id).order("created_at", { ascending: false }),
   ]);
   if (error || !data) return new Response("Error al exportar", { status: 500 });
 
   const tableName = new Map((tableRows ?? []).map((t) => [t.id, t.name]));
   const membersByGuest = new Map<string, NonNullable<typeof memberRows>>();
   for (const m of memberRows ?? []) membersByGuest.set(m.guest_id, [...(membersByGuest.get(m.guest_id) ?? []), m]);
+  const contacts = new Map<string, { count: number; last: string }>();
+  for (const c of contactRows ?? []) {
+    const cur = contacts.get(c.guest_id);
+    if (cur) cur.count += 1;
+    else contacts.set(c.guest_id, { count: 1, last: c.created_at });
+  }
   const estado = (a: boolean | null) => (a === null ? "Pendiente" : a ? "Asiste" : "No asiste");
 
   const rows = porPersona
@@ -40,13 +47,13 @@ export async function GET(req: Request, ctx: RouteContext<"/app/[id]/export">) {
         ),
       ]
     : [
-        ["Nombre", "Código", "Pases", "Teléfono", "Estado", "Confirmados", "Personas", "Mesa", "Mensaje", "Respondió", "Primera apertura", "Última apertura", "Aperturas"],
+        ["Nombre", "Código", "Pases", "Teléfono", "Estado", "Confirmados", "Personas", "Mesa", "Mensaje", "Respondió", "Primera apertura", "Última apertura", "Aperturas", "Último aviso", "Avisos"],
         ...data.map((g) => {
           const people = membersByGuest.get(g.id) ?? [];
           return [
             g.name, g.code, g.passes, g.phone, estado(g.attending), g.confirmed_count,
             peopleSummary(people, g.passes), tableSummary(people, tableName), g.message, g.confirmed_at,
-            g.first_opened_at, g.last_opened_at, g.open_count,
+            g.first_opened_at, g.last_opened_at, g.open_count, contacts.get(g.id)?.last, contacts.get(g.id)?.count ?? 0,
           ];
         }),
       ];

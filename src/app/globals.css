@@ -656,3 +656,19 @@ details.person-diet>summary em,details.adm-diet>summary em{font-family:var(--bod
 .adm-seen,.adm-unseen{display:block;margin-top:4px;font-size:12px;line-height:1.35}
 .adm-seen{color:var(--accent)}
 .adm-unseen{color:var(--muted)}
+
+/* Recordatorios */
+.rq-controls{display:flex;flex-direction:row;flex-wrap:wrap;gap:12px 24px;align-items:flex-end}
+.rq-controls>label:first-child{flex:1 1 280px}
+.rq-message-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.rq-preview{white-space:pre-wrap;background:var(--paper);border:1px solid var(--line);padding:12px 14px;line-height:1.55}
+.rq-progress{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)}
+.rq-bar{height:6px;background:var(--line);overflow:hidden}
+.rq-bar i{display:block;height:100%;background:var(--accent);transition:width .3s}
+.rq-current{border-left:4px solid var(--accent)}
+.rq-current h2{font-size:26px;margin:2px 0}
+.rq-meta{color:var(--muted);font-size:13px}
+.rq-confirm{display:flex;flex-direction:column;gap:12px;background:var(--paper);padding:14px;border:1px dashed var(--accent)}
+.rq-list li{display:flex;justify-content:space-between;align-items:center;gap:12px;padding-block:8px;border-bottom:1px solid var(--line)}
+.rq-list li[data-skipped]{opacity:.55}
+.rq-list small{display:block;color:var(--muted);font-size:12px}
