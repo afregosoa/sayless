@@ -1,6 +1,6 @@
 -- Evento de PRUEBA para sayless-dev (datos ficticios). NO correr en producción.
 -- Pegar en Supabase > SQL Editor > Run. Se puede correr varias veces: reinicia el evento y sus invitados.
--- Requiere haber corrido schema.sql y las migraciones 001–018 (la 011 solo si usarás música).
+-- Requiere haber corrido schema.sql y las migraciones 001–020 (la 011 solo si usarás música).
 --
 -- ANTES DE CORRER: cambia el correo de abajo por el correo con el que inicias sesión en la app (sayless-dev).
 -- Debes haber entrado al menos una vez (para que exista tu perfil); si no, el evento se crea sin dueño y
@@ -151,6 +151,15 @@ begin
   from public.guests g where g.event_id = v_event and g.name = 'Familia Ramírez' and m.guest_id = g.id and m.position = 1;
   update public.guest_members m set allergies = 'Mariscos'
   from public.guests g where g.event_id = v_event and g.name = 'John & Emily Carter' and m.guest_id = g.id and m.position = 2;
+
+  -- Aperturas de ejemplo (requiere la migración 020): los Pérez abrieron su invitación y no han confirmado;
+  -- Daniela aún no la abre; los Ramírez, Sofía y los Carter la abrieron antes de confirmar.
+  update public.guests set first_opened_at = now() - interval '3 days', last_opened_at = now() - interval '5 hours', open_count = 4
+    where event_id = v_event and name = 'Familia Pérez';
+  update public.guests set first_opened_at = now() - interval '4 days', last_opened_at = now() - interval '2 days', open_count = 2
+    where event_id = v_event and name in ('Familia Ramírez', 'Sofía Hernández', 'John & Emily Carter');
+  update public.guests set first_opened_at = now() - interval '6 days', last_opened_at = now() - interval '6 days', open_count = 1
+    where event_id = v_event and name = 'Carlos Medina';
 
   -- Mensajes y fechas de respuesta (no los toca el recálculo).
   update public.guests set message = '¡Ahí estaremos, felicidades!', confirmed_at = now() - interval '2 days' where event_id = v_event and name = 'Familia Ramírez';

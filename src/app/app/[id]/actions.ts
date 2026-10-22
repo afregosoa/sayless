@@ -315,7 +315,7 @@ export async function anonymizeGuests(eventId: string, confirmation: string): Pr
   // service_role: la sesión del usuario no puede modificar message ni anonymized_at.
   const { data, error } = await supabaseAdmin()
     .from("guests")
-    .update({ name: "Invitado (datos eliminados)", phone: null, message: null, anonymized_at: new Date().toISOString() })
+    .update({ name: "Invitado (datos eliminados)", phone: null, message: null, anonymized_at: new Date().toISOString(), first_opened_at: null, last_opened_at: null, open_count: 0 })
     .eq("event_id", eventId)
     .is("anonymized_at", null)
     .select("id");

@@ -651,3 +651,8 @@ details.person-diet>summary em,details.adm-diet>summary em{font-family:var(--bod
 .lp-tpl-row b{font-family:var(--display);font-weight:400;font-size:21px}
 .lp-tpl-row small{font-size:13px;color:var(--muted);line-height:1.4}
 .lp-center{margin-top:34px!important;text-align:center}
+
+/* Seguimiento de aperturas */
+.adm-seen,.adm-unseen{display:block;margin-top:4px;font-size:12px;line-height:1.35}
+.adm-seen{color:var(--accent)}
+.adm-unseen{color:var(--muted)}

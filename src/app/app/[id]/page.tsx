@@ -24,16 +24,19 @@ import { RETENTION_DAYS, retentionEnabled } from "@/lib/retention";
 import { isReadyToPublish, publishChecklist } from "@/lib/publish-checklist";
 import { peopleSummary, tableSummary } from "@/lib/seating";
 import { DIETS, DIET_LABELS, cleanDiet, dietText } from "@/lib/diet";
+import { timeAgo } from "@/lib/time-ago";
 
 export const metadata: Metadata = {
   title: "Invitados",
   robots: { index: false, follow: false },
 };
 
-type Filter = "todos" | "pendientes" | "asisten" | "no";
+type Filter = "todos" | "pendientes" | "vieron" | "sinabrir" | "asisten" | "no";
 const FILTERS: [Filter, string][] = [
   ["todos", "Todos"],
   ["pendientes", "Pendientes"],
+  ["vieron", "Vieron, sin confirmar"],
+  ["sinabrir", "Sin abrir"],
   ["asisten", "Asisten"],
   ["no", "No asisten"],
 ];
@@ -129,7 +132,7 @@ async function AdminContent({
 
   const { data, error } = await supabase
     .from("guests")
-    .select("id, name, code, passes, phone, attending, confirmed_count, message, confirmed_at")
+    .select("id, name, code, passes, phone, attending, confirmed_count, message, confirmed_at, first_opened_at, last_opened_at, open_count")
     .eq("event_id", event.id)
     .order("name");
   if (error) {
@@ -176,6 +179,10 @@ async function AdminContent({
   const allergyList = eaters.filter((m) => m.allergies?.trim());
   const showDietCard = askDiet || dietCounts.length > 0 || allergyList.length > 0;
 
+  // Seguimiento: de quienes aún no responden, quiénes ya abrieron su enlace personal y quiénes no.
+  const openedPending = pending.filter((g) => g.open_count > 0);
+  const neverOpened = pending.filter((g) => g.open_count === 0);
+
   const stats: [string, number, string?][] = [
     ["Personas confirmadas", sum(going, "confirmed_count"), `de ${sum(guests, "passes")} pases`],
     ["Invitaciones", guests.length],
@@ -183,10 +190,14 @@ async function AdminContent({
     ["Asisten", going.length],
     ["No asisten", declined.length],
     ["Pases sin responder", sum(pending, "passes")],
+    ["Vieron y no confirmaron", openedPending.length, `de ${pending.length} pendientes`],
+    ["Aún sin abrir", neverOpened.length],
   ];
 
   const visible = guests.filter((g) =>
     filter === "pendientes" ? g.attending === null
+      : filter === "vieron" ? g.attending === null && g.open_count > 0
+      : filter === "sinabrir" ? g.attending === null && g.open_count === 0
       : filter === "asisten" ? g.attending === true
       : filter === "no" ? g.attending === false
       : true,
@@ -305,6 +316,10 @@ async function AdminContent({
         <ImportForm eventId={event.id} />
       </div>
 
+      <p className="adm-hint">
+        El seguimiento cuenta cuando un invitado abre su enlace personal. No cuenta las vistas previas de WhatsApp ni tus propias visitas.
+      </p>
+
       <nav className="adm-filters" aria-label="Filtrar">
         {FILTERS.map(([k, label]) => (
           <Link key={k} href={k === "todos" ? `/app/${event.id}` : `/app/${event.id}?f=${k}`} aria-current={filter === k ? "page" : undefined}>
@@ -341,6 +356,13 @@ async function AdminContent({
                     {g.attending === null ? <span className="adm-tag">Pendiente</span>
                       : g.attending ? <span className="adm-tag adm-yes">Asiste · {g.confirmed_count}</span>
                       : <span className="adm-tag adm-no">No asiste</span>}
+                    {g.attending === null && (
+                      g.open_count > 0
+                        ? <small className="adm-seen" title={`Primera vez: ${new Date(g.first_opened_at ?? g.last_opened_at).toLocaleString("es-MX", { timeZone: "America/Mexico_City" })}`}>
+                            👁 Vio su invitación {timeAgo(g.last_opened_at)}{g.open_count > 1 ? ` · ${g.open_count} veces` : ""}
+                          </small>
+                        : <small className="adm-unseen">Aún no la abre</small>
+                    )}
                   </td>
                   <td data-label="Mesa">{tableSummary(membersByGuest.get(g.id) ?? [], tableName) || "—"}</td>
                   <td data-label="Mensaje">{g.message ?? "—"}</td>

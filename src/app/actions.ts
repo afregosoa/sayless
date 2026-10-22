@@ -1,9 +1,11 @@
 "use server";
 
+import { getCurrentUser } from "@/lib/auth";
 import { getPublicEvent } from "@/lib/events";
 import { findGuest, RateLimitedError } from "@/lib/guests";
 import { rsvpSchema, type Guest } from "@/lib/rsvp-schema";
 import { supabaseAdmin } from "@/lib/supabase-server";
+import { supabaseUser } from "@/lib/supabase/server";
 
 const RATE_LIMITED_MESSAGE = "Demasiados intentos con códigos incorrectos. Espera unos minutos e intenta de nuevo.";
 
@@ -78,4 +80,27 @@ export async function submitRsvp(
   if (error) return { ok: false, error: "No pudimos guardar tu respuesta. Intenta de nuevo." };
 
   return { ok: true };
+}
+
+/**
+ * Registra que el invitado abrió su enlace personal. Lo llama el navegador (no el servidor al renderizar), así las vistas previas
+ * que WhatsApp o iMessage descargan sin ejecutar JavaScript no cuentan. Tampoco cuentan el anfitrión ni sus colaboradores.
+ * Si algo falla (por ejemplo, la migración aún no está aplicada) se ignora: nunca debe estorbar a quien abre su invitación.
+ */
+export async function recordOpen(slug: string, code: string): Promise<void> {
+  try {
+    const event = await getPublicEvent(slug);
+    if (!event || event.status !== "published") return;
+    const guest = await findGuest(event.id, code);
+    if (!guest) return;
+
+    // Quien puede editar el evento está probando el enlace, no es un invitado que lo abre.
+    if (await getCurrentUser()) {
+      const { data } = await (await supabaseUser()).from("events").select("id").eq("id", event.id).maybeSingle(); // RLS: solo si puede editarlo
+      if (data) return;
+    }
+    await supabaseAdmin().rpc("record_guest_open", { p_guest: guest.id });
+  } catch {
+    /* ver nota arriba */
+  }
 }

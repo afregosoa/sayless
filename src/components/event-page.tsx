@@ -3,6 +3,7 @@ import { lookupGuest } from "@/app/actions";
 import { InvitationUnavailable } from "./invitation-unavailable";
 import { getPublicEvent, getUnavailableReason } from "@/lib/events";
 import { Invitation } from "./invitation";
+import { OpenBeacon } from "./open-beacon";
 
 export async function EventPage({ slug, code }: { slug: string; code?: string }) {
   const event = await getPublicEvent(slug);
@@ -16,5 +17,10 @@ export async function EventPage({ slug, code }: { slug: string; code?: string })
   // Código inválido: se muestra la invitación normal pidiendo el código.
   const found = code ? await lookupGuest(slug, code) : null;
   const guest = found === "limitado" ? null : found; // bloqueado por intentos fallidos: se ve la invitación general
-  return <Invitation event={event} code={guest ? code?.toUpperCase() : undefined} guest={guest ?? undefined} />;
+  return (
+    <>
+      <Invitation event={event} code={guest ? code?.toUpperCase() : undefined} guest={guest ?? undefined} />
+      {guest && code && <OpenBeacon slug={event.slug} code={code} />}
+    </>
+  );
 }

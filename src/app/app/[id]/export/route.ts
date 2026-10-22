@@ -16,7 +16,7 @@ export async function GET(req: Request, ctx: RouteContext<"/app/[id]/export">) {
   const [{ data, error }, { data: tableRows }, { data: memberRows }] = await Promise.all([
     supabase
       .from("guests")
-      .select("id, name, code, passes, phone, attending, confirmed_count, message, confirmed_at")
+      .select("id, name, code, passes, phone, attending, confirmed_count, message, confirmed_at, first_opened_at, last_opened_at, open_count")
       .eq("event_id", id)
       .order("name"),
     supabase.from("event_tables").select("id, name").eq("event_id", id),
@@ -40,12 +40,13 @@ export async function GET(req: Request, ctx: RouteContext<"/app/[id]/export">) {
         ),
       ]
     : [
-        ["Nombre", "Código", "Pases", "Teléfono", "Estado", "Confirmados", "Personas", "Mesa", "Mensaje", "Respondió"],
+        ["Nombre", "Código", "Pases", "Teléfono", "Estado", "Confirmados", "Personas", "Mesa", "Mensaje", "Respondió", "Primera apertura", "Última apertura", "Aperturas"],
         ...data.map((g) => {
           const people = membersByGuest.get(g.id) ?? [];
           return [
             g.name, g.code, g.passes, g.phone, estado(g.attending), g.confirmed_count,
             peopleSummary(people, g.passes), tableSummary(people, tableName), g.message, g.confirmed_at,
+            g.first_opened_at, g.last_opened_at, g.open_count,
           ];
         }),
       ];
