@@ -21,7 +21,7 @@ export type PublicEvent = {
   deadlineLabel: string | null;
   calendar: CalendarData | null; // para "Agregar al calendario" (Google y .ics)
   /** Solo en las vistas de muestra del catálogo (/plantillas/<id>): imágenes locales y sin guardado real. */
-  demo?: { hero?: string; gallery?: string[] };
+  demo?: { hero?: string; gallery?: string[]; venue?: string; gifts?: string };
 };
 
 export const EVENT_COLUMNS =

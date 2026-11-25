@@ -144,7 +144,7 @@ export function Moderno({ event, code, guest, preview }: TemplateProps) {
         <Block n={num()} title="Hospedaje" id="hospedaje">
           <ul className="md-rows">
             {c.lodging.items.map((h, i) => (
-              <li key={i}><div><h3>{h.name}</h3>{h.address && <p className="md-addr">{h.address}</p>}</div></li>
+              <li key={i}><div><h3>{h.name}</h3>{h.address && <p className="md-addr">{h.address}</p>}{h.map_query && <a className="md-link" href={mapsHref(h.map_query)} target="_blank" rel="noopener">Cómo llegar ↗</a>}</div></li>
             ))}
           </ul>
         </Block>

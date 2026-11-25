@@ -178,6 +178,7 @@ export function Jardin({ event, code, guest, preview }: TemplateProps) {
                   <article className="jd-arch-card jd-arch-card-sm" key={i}>
                     <h3>{h.name}</h3>
                     {h.address && <p className="jd-addr">{h.address}</p>}
+                    {h.map_query && <a className="jd-link" href={mapsHref(h.map_query)} target="_blank" rel="noopener">Cómo llegar</a>}
                   </article>
                 ))}
               </div>

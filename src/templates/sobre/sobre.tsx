@@ -167,6 +167,7 @@ export function Sobre({ event, code, guest, preview }: TemplateProps) {
                   <article className="so-card-box" key={i}>
                     <h3>{h.name}</h3>
                     {h.address && <p className="so-addr">{h.address}</p>}
+                    {h.map_query && <a className="so-link" href={mapsHref(h.map_query)} target="_blank" rel="noopener">Cómo llegar</a>}
                   </article>
                 ))}
               </div>

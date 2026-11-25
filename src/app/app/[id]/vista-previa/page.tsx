@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { z } from "zod";
-import { Invitation } from "@/components/invitation";
+import { LivePreview } from "@/components/live-preview";
 import { requireUser } from "@/lib/auth";
 import { buildPublicEvent, EVENT_COLUMNS } from "@/lib/events";
 import { supabaseUser } from "@/lib/supabase/server";
@@ -28,5 +28,5 @@ async function Preview({ params }: { params: PageProps<"/app/[id]/vista-previa">
   const event = data && buildPublicEvent(data);
   if (!event) notFound();
 
-  return <Invitation event={event} preview />;
+  return <LivePreview event={event} />;
 }

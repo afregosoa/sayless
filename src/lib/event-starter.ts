@@ -24,7 +24,6 @@ export function slugify(text: string) {
 
 export const DEFAULT_THEME: EventTheme = {
   light: { paper: "#ECEBE4", ink: "#22241F", muted: "#62655B", accent: "#55623F", line: "#CBCBBF", card: "#E3E2D9" },
-  dark: { paper: "#161814", ink: "#E9E8E0", muted: "#A5A89C", accent: "#AFBD93", line: "#34372F", card: "#1E211B" },
 };
 
 /** Contenido inicial de un evento nuevo: el cliente lo edita después. */
@@ -32,6 +31,7 @@ export function starterContent(title: string, type: EventType): EventContent {
   const celebracion = type === "boda" ? "nuestra boda" : "nuestra celebración";
   return {
     hero: { title, date_label: "", subtitle: "", image_alt: "" },
+    story: { enabled: true, title: "Nuestra historia de amor", body: "" },
     welcome: {
       enabled: true,
       eyebrow: "Estás invitado",

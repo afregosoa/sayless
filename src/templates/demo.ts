@@ -9,6 +9,10 @@ const DATE = "2027-06-12";
 
 const content = contentSchema.parse({
   hero: { title: "Ana & Luis", date_label: "12 de junio de 2027", subtitle: "Colima, México", image_alt: "Ana y Luis" },
+  story: {
+    enabled: true, title: "Nuestra historia de amor",
+    body: "Nos conocimos hace seis años en una tarde de lluvia, en una librería de Colima. Un libro, dos manos que lo buscaban al mismo tiempo y una conversación que no quisimos terminar.\n\nDesde entonces hemos compartido viajes, sueños y mucha risa. Hoy queremos celebrar con las personas que más queremos el comienzo de nuestra vida juntos.",
+  },
   welcome: {
     enabled: true, eyebrow: "Nos casamos", heading: "Celebra con", heading_script: "nosotros",
     body: "Con mucha alegría queremos invitarte a compartir el día en que unimos nuestras vidas. Tu presencia hará ese día aún más especial.",
@@ -64,6 +68,8 @@ export function demoEvent(id: TemplateId): PublicEvent {
     demo: {
       hero: `/templates/demo-hero-${id}.svg`,
       gallery: [1, 2, 3, 4].map((n) => `/templates/demo-photo-${n}.svg`),
+      venue: "/templates/demo-photo-3.svg", // foto de fondo de muestra para las tarjetas de lugares
+      gifts: "/templates/demo-regalos.svg", // foto de fondo de muestra para la mesa de regalos
     },
   };
 }

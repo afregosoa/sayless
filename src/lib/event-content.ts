@@ -1,8 +1,9 @@
+import { DEFAULT_THEME } from "./event-starter";
 import { z } from "zod";
 
 // Todo lo que el cliente puede editar. Cada sección es opcional: si falta o tiene
 // enabled=false, no se muestra. Los textos se renderizan siempre como texto (nunca HTML).
-export const MAX_GALLERY = 10;
+export const MAX_GALLERY = 15;
 const str = (max: number) => z.string().max(max).default("");
 const flag = z.boolean().default(true);
 const httpUrl = z.url({ protocol: /^https?$/ }).max(500);
@@ -21,6 +22,7 @@ export const contentSchema = z.object({
     image: mediaPath.optional(),
     image_alt: str(160),
   }).default({ title: "", date_label: "", subtitle: "", image_alt: "" }),
+  story: z.object({ enabled: flag, title: str(120), body: str(3000) }).optional(),
   welcome: z.object({
     enabled: flag, eyebrow: str(80), heading: str(120), heading_script: str(60),
     body: str(1200), quote: str(400),
@@ -33,7 +35,12 @@ export const contentSchema = z.object({
   venues: z.object({
     enabled: flag, eyebrow: str(80),
     items: z.array(z.object({
-      label: str(80), name: str(120), time: str(40), address: str(200), map_query: str(200),
+      label: str(80), name: str(120), time: str(40), address: str(200), map_query: str(600),
+      image: mediaPath.optional(), // foto de fondo de la tarjeta (solo la usan algunas plantillas)
+      // Encuadre de la foto: punto que queda al centro (0-100 %) y acercamiento (1 = ajustada a la tarjeta).
+      image_x: z.number().min(0).max(100).optional(),
+      image_y: z.number().min(0).max(100).optional(),
+      image_zoom: z.number().min(1).max(3).optional(),
     })).max(6).default([]),
   }).optional(),
   schedule: z.object({
@@ -43,10 +50,11 @@ export const contentSchema = z.object({
   dress_code: z.object({ enabled: flag, body: str(800), quote: str(400) }).optional(),
   gifts: z.object({
     enabled: flag, body: str(800), button_label: str(60), url: httpUrl.optional(),
+    image: mediaPath.optional(), // foto de fondo de la sección (solo la usan algunas plantillas)
   }).optional(),
   lodging: z.object({
     enabled: flag,
-    items: z.array(z.object({ name: str(120), address: str(200) })).max(10).default([]),
+    items: z.array(z.object({ name: str(120), address: str(200), map_query: str(600).default("") })).max(10).default([]),
   }).optional(),
   faq: z.object({
     enabled: flag,
@@ -76,8 +84,7 @@ const palette = z.object({
 
 export const themeSchema = z.object({
   hero_art: z.string().max(40).optional(),
-  light: palette.optional(),
-  dark: palette.optional(),
+  light: palette.optional(), // una sola paleta: la invitación se ve igual sin importar el modo del dispositivo
 });
 
 export type EventContent = z.infer<typeof contentSchema>;
@@ -85,14 +92,11 @@ export type EventTheme = z.infer<typeof themeSchema>;
 
 // Los colores ya están validados como #RRGGBB, así que es seguro inyectarlos en un <style>.
 export function themeCss(theme: EventTheme): string {
-  const vars = (p?: Record<string, string | undefined>) =>
-    Object.entries(p ?? {}).filter(([, v]) => v).map(([k, v]) => `--${k}:${v}`).join(";");
-  const light = vars(theme.light);
-  const dark = vars(theme.dark);
-  return [
-    light && `:root{${light}}`,
-    dark && `@media (prefers-color-scheme: dark){:root{${dark}}}`,
-  ].filter(Boolean).join("\n");
+  const light = Object.entries({ ...DEFAULT_THEME.light, ...theme.light })
+    .filter(([, v]) => v).map(([k, v]) => `--${k}:${v}`).join(";");
+  const vars = `${light};--err:#9A3B2E;color-scheme:light`;
+  // Se repite en el modo oscuro para anular la paleta oscura global: la invitación nunca cambia de color.
+  return `:root{${vars}}\n@media (prefers-color-scheme: dark){:root{${vars}}}`;
 }
 
 // ── Fechas ──

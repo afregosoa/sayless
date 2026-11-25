@@ -10,7 +10,7 @@ import { supabaseUser } from "@/lib/supabase/server";
 export type UploadResult = { ok: true; path: string } | { ok: false; error: string };
 
 const MAX_UPLOAD_BYTES = 4 * 1024 * 1024; // las funciones de Vercel limitan la petición a ~4.5 MB; el navegador ya reduce la foto
-const MAX_FILES_PER_EVENT = 20; // incluye fotos aún no guardadas en el contenido
+const MAX_FILES_PER_EVENT = 30; // incluye fotos aún no guardadas en el contenido
 const MAX_PIXELS = 60_000_000; // protege contra imágenes "bomba"
 
 /**

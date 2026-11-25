@@ -6,8 +6,10 @@ const VOLUME = 0.7;
 
 // Música de fondo de la invitación. Los navegadores solo dejan reproducir audio tras un toque del
 // invitado, por eso la pantalla de apertura ("Toca para abrir") es el momento natural para empezar.
-export function MusicPlayer({ src, title, label, cover, eventTitle, preview, start = 0, end }: {
+export function MusicPlayer({ src, title, label, cover, eventTitle, preview, start = 0, end, autoOnScroll }: {
   src: string; title: string; label?: string; cover: boolean; eventTitle: string; preview?: boolean; start?: number; end?: number;
+  /** Intenta empezar la canción en cuanto el invitado empieza a desplazarse (ver el efecto de abajo). */
+  autoOnScroll?: boolean;
 }) {
   const audio = useRef<HTMLAudioElement>(null);
   const fade = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -18,9 +20,9 @@ export function MusicPlayer({ src, title, label, cover, eventTitle, preview, sta
   const [playing, setPlaying] = useState(false);
   const [covered, setCovered] = useState(cover && !preview);
 
-  const play = useCallback(async () => {
+  const play = useCallback(async (): Promise<boolean> => {
     const el = audio.current;
-    if (!el) return;
+    if (!el) return false;
     if (fade.current) clearInterval(fade.current);
     el.volume = 0;
     // La primera vez se salta la introducción. Con preload="none" aún no hay metadatos: se espera a tenerlos.
@@ -33,13 +35,14 @@ export function MusicPlayer({ src, title, label, cover, eventTitle, preview, sta
       await el.play();
     } catch {
       setPlaying(false); // el navegador lo bloqueó: queda el botón para reintentar
-      return;
+      return false;
     }
     setPlaying(true);
     fade.current = setInterval(() => { // entrada suave
       el.volume = Math.min(VOLUME, el.volume + 0.05);
       if (el.volume >= VOLUME && fade.current) clearInterval(fade.current);
     }, 80);
+    return true;
   }, [start]);
 
   const pause = useCallback(() => {
@@ -54,6 +57,26 @@ export function MusicPlayer({ src, title, label, cover, eventTitle, preview, sta
     window.addEventListener("sayless:play", onPlay);
     return () => window.removeEventListener("sayless:play", onPlay);
   }, [play]);
+
+  // La canción empieza al desplazarse. Ojo: los navegadores solo dejan reproducir audio tras un gesto del invitado
+  // (un toque, un clic o una tecla), y desplazarse con la rueda o deslizando el dedo normalmente NO cuenta como gesto.
+  // Por eso se intenta en el primer desplazamiento y, si el navegador lo bloquea, se reintenta con el siguiente
+  // toque, clic o tecla. Si el invitado ya la pausó a mano, no se vuelve a iniciar.
+  useEffect(() => {
+    if (!autoOnScroll || preview || covered) return;
+    let busy = false;
+    let done = false;
+    const events = ["scroll", "wheel", "touchmove", "touchend", "pointerdown", "keydown"] as const;
+    const stop = () => events.forEach((e) => window.removeEventListener(e, attempt));
+    async function attempt() {
+      if (busy || done) return;
+      busy = true;
+      if (await play()) { done = true; stop(); }
+      busy = false;
+    }
+    events.forEach((e) => window.addEventListener(e, attempt, { passive: true }));
+    return stop;
+  }, [autoOnScroll, preview, covered, play]);
 
   // Con la pantalla de apertura visible no se puede desplazar la página.
   useEffect(() => {

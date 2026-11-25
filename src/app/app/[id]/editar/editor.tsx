@@ -10,6 +10,7 @@ import { TemplatePicker } from "@/components/template-picker";
 import { DEFAULT_THEME, type EventType } from "@/lib/event-starter";
 import { TEMPLATES, type TemplateId } from "@/templates/catalog";
 import { prepareImage } from "@/lib/client-image";
+import { PREVIEW_DRAFT, PREVIEW_FRAME, PREVIEW_READY, type PreviewFrameMessage } from "@/lib/preview-message";
 import { saveEvent } from "./actions";
 import { uploadEventAudio } from "./audio-actions";
 import { uploadEventImage } from "./media-actions";
@@ -23,9 +24,10 @@ type State = {
   theme: EventTheme;
 };
 
-type Toggleable = "welcome" | "gallery" | "countdown" | "venues" | "schedule" | "dress_code" | "gifts" | "lodging" | "faq" | "music";
+type Toggleable = "story" | "welcome" | "gallery" | "countdown" | "venues" | "schedule" | "dress_code" | "gifts" | "lodging" | "faq" | "music";
 
 const BLANK = {
+  story: { enabled: true, title: "Nuestra historia de amor", body: "" },
   welcome: { enabled: true, eyebrow: "", heading: "", heading_script: "", body: "", quote: "" },
   gallery: { enabled: true, items: [] },
   countdown: { enabled: true, date_label: "" },
@@ -136,13 +138,13 @@ function Thumb({ path, alt }: { path: string; alt: string }) {
   return <Image src={mediaUrl(path)} alt={alt} width={96} height={120} className="ed-thumb" unoptimized />;
 }
 
-function PhotoField({ eventId, path, onChange }: {
-  eventId: string; path?: string; onChange: (path?: string) => void;
+function PhotoField({ eventId, path, onChange, alt = "Foto de portada" }: {
+  eventId: string; path?: string; onChange: (path?: string) => void; alt?: string;
 }) {
   const { upload, busy, error } = usePhotoUpload(eventId);
   return (
     <div className="ed-photo">
-      {path ? <Thumb path={path} alt="Foto de portada" /> : <div className="ed-thumb ed-thumb-empty">Sin foto</div>}
+      {path ? <Thumb path={path} alt={alt} /> : <div className="ed-thumb ed-thumb-empty">Sin foto</div>}
       <div className="ed-photo-actions">
         <label className="adm-btn adm-ghost ed-file">
           {busy ? "Subiendo…" : path ? "Cambiar foto" : "Subir foto"}
@@ -368,6 +370,7 @@ export function Editor({ eventId, eventType, initial, publicPath, isPublished }:
   const [previewKey, setPreviewKey] = useState(0);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [pending, start] = useTransition();
+  const frame = useRef<HTMLIFrameElement>(null);
 
   const json = JSON.stringify(state);
   const dirty = json !== savedJson;
@@ -378,6 +381,40 @@ export function Editor({ eventId, eventType, initial, publicPath, isPublished }:
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty]);
+
+  // La vista previa se actualiza al momento: se le envía el borrador en cada cambio (y cuando termina de cargar).
+  useEffect(() => {
+    const send = () => {
+      const content = structuredClone(state.content);
+      if (content.gifts && !content.gifts.url) delete content.gifts.url; // igual que al guardar: una URL vacía no es válida
+      frame.current?.contentWindow?.postMessage({ type: PREVIEW_DRAFT, template: state.template, content, theme: state.theme }, window.location.origin);
+    };
+    const t = window.setTimeout(send, 120);
+    const onReady = (e: MessageEvent) => {
+      if (e.origin === window.location.origin && e.source === frame.current?.contentWindow && (e.data as { type?: string } | null)?.type === PREVIEW_READY) send();
+    };
+    window.addEventListener("message", onReady);
+    return () => { window.clearTimeout(t); window.removeEventListener("message", onReady); };
+  }, [state]);
+
+  // La foto de un lugar se encuadra arrastrándola en la tarjeta de la vista previa: el editor guarda ese encuadre en el borrador.
+  useEffect(() => {
+    const onFrame = (e: MessageEvent) => {
+      if (e.origin !== window.location.origin || e.source !== frame.current?.contentWindow) return;
+      const d = e.data as Partial<PreviewFrameMessage> | null;
+      if (d?.type !== PREVIEW_FRAME || typeof d.venue !== "number") return;
+      const num = (v: unknown, min: number, max: number) => (typeof v === "number" && Number.isFinite(v) ? Math.min(max, Math.max(min, v)) : undefined);
+      const frameValues = { image_x: num(d.image_x, 0, 100), image_y: num(d.image_y, 0, 100), image_zoom: num(d.image_zoom, 1, 3) };
+      setState((s) => {
+        const venues = s.content.venues;
+        if (!venues || !venues.items[d.venue!]) return s;
+        const items = venues.items.map((it, i) => (i === d.venue ? { ...it, ...frameValues } : it));
+        return { ...s, content: { ...s.content, venues: { ...venues, items } } };
+      });
+    };
+    window.addEventListener("message", onFrame);
+    return () => window.removeEventListener("message", onFrame);
+  }, []);
 
   const c = state.content;
   const setContent = (patch: Partial<EventContent>) =>
@@ -392,9 +429,9 @@ export function Editor({ eventId, eventType, initial, publicPath, isPublished }:
   const toggle = (key: Toggleable) => (on: boolean) => section(key, { enabled: on } as never);
   const sec = <K extends Toggleable>(key: K) => ({ ...BLANK[key], ...c[key] }) as (typeof BLANK)[K];
 
-  const palette = (mode: "light" | "dark") => ({ ...DEFAULT_THEME[mode], ...state.theme[mode] });
-  const setColor = (mode: "light" | "dark", key: string, value: string) =>
-    setState((s) => ({ ...s, theme: { ...s.theme, [mode]: { ...palette(mode), [key]: value } } }));
+  const palette = () => ({ ...DEFAULT_THEME.light, ...state.theme.light });
+  const setColor = (key: string, value: string) =>
+    setState((s) => ({ ...s, theme: { ...s.theme, light: { ...palette(), [key]: value } } }));
 
   // Cambiar de plantilla conserva textos y fotos; solo cambia el diseño. Se pregunta si también se usan sus colores.
   function changeTemplate(id: TemplateId) {
@@ -424,7 +461,7 @@ export function Editor({ eventId, eventType, initial, publicPath, isPublished }:
   }
 
   const venues = sec("venues"), schedule = sec("schedule"), lodging = sec("lodging"), faq = sec("faq");
-  const music = sec("music"), gallery = sec("gallery"), welcome = sec("welcome"), countdown = sec("countdown"), dress = sec("dress_code"), gifts = sec("gifts");
+  const music = sec("music"), gallery = sec("gallery"), welcome = sec("welcome"), story = sec("story"), countdown = sec("countdown"), dress = sec("dress_code"), gifts = sec("gifts");
 
   return (
     <div className="ed-layout">
@@ -472,6 +509,12 @@ export function Editor({ eventId, eventType, initial, publicPath, isPublished }:
           </div>
         </Panel>
 
+        <Panel title="Nuestra historia de amor" enabled={story.enabled} onToggle={toggle("story")}>
+          <Text label="Título" max={120} value={story.title} onChange={(title) => section("story", { title })} />
+          <Text label="Su historia (deja una línea en blanco entre párrafos)" rows={8} max={3000} value={story.body} onChange={(body) => section("story", { body })} />
+          <p className="adm-hint">Se muestra justo después de la portada. Si no escribes nada, la sección no aparece.</p>
+        </Panel>
+
         <Panel title="Bienvenida" enabled={welcome.enabled} onToggle={toggle("welcome")}>
           <div className="adm-grid">
             <Text label="Texto pequeño superior" max={80} value={welcome.eyebrow} onChange={(eyebrow) => section("welcome", { eyebrow })} />
@@ -501,7 +544,7 @@ export function Editor({ eventId, eventType, initial, publicPath, isPublished }:
             “Agregar al calendario” usa la hora del primer lugar (por ejemplo, <b>6:00 PM</b> o <b>18:00</b>). Si no se entiende la hora, se agrega como evento de todo el día.
           </p>
           <List items={venues.items} max={6} addLabel="Agregar lugar" onChange={(items) => section("venues", { items })}
-            blank={{ label: "", name: "", time: "", address: "", map_query: "" }}
+            blank={{ label: "", name: "", time: "", address: "", map_query: "", image: undefined as string | undefined, image_x: undefined as number | undefined, image_y: undefined as number | undefined, image_zoom: undefined as number | undefined }}
             render={(v, patch) => (
               <>
                 <div className="adm-grid">
@@ -510,7 +553,10 @@ export function Editor({ eventId, eventType, initial, publicPath, isPublished }:
                   <Text label="Hora" max={40} value={v.time} placeholder="6:00 PM" onChange={(time) => patch({ time })} />
                 </div>
                 <Text label="Dirección" max={200} value={v.address} onChange={(address) => patch({ address })} />
-                <Text label="Búsqueda en Google Maps" max={200} value={v.map_query} placeholder="Nombre del lugar + ciudad" onChange={(map_query) => patch({ map_query })} />
+                <Text label="Búsqueda o enlace de Google Maps" max={600} value={v.map_query} placeholder="Nombre del lugar + ciudad, o pega el enlace de Maps" onChange={(map_query) => patch({ map_query })} />
+                <p className="adm-hint"><b>Foto de fondo de la tarjeta</b> (opcional). Solo la muestra la plantilla Retrato; mejor una foto horizontal del lugar. Para encuadrarla, arrástrala sobre la tarjeta en la vista previa (con − / + o Ctrl + rueda la acercas).</p>
+                <PhotoField eventId={eventId} path={v.image} alt={`Foto de ${v.name || "el lugar"}`}
+                  onChange={(image) => patch(image ? { image } : { image: undefined, image_x: undefined, image_y: undefined, image_zoom: undefined })} />
               </>
             )} />
         </Panel>
@@ -533,6 +579,8 @@ export function Editor({ eventId, eventType, initial, publicPath, isPublished }:
 
         <Panel title="Mesa de regalos" enabled={gifts.enabled} onToggle={toggle("gifts")}>
           <Text label="Mensaje" rows={3} max={800} value={gifts.body} onChange={(body) => section("gifts", { body })} />
+          <p className="adm-hint"><b>Foto de fondo de la sección</b> (opcional). Solo la muestra la plantilla Retrato; mejor una foto horizontal. Se oscurece un poco para que el texto se lea.</p>
+          <PhotoField eventId={eventId} path={c.gifts?.image} alt="Foto de la mesa de regalos" onChange={(image) => section("gifts", { image })} />
           <div className="adm-grid">
             <Text label="Texto del botón" max={60} value={gifts.button_label} onChange={(button_label) => section("gifts", { button_label })} />
             <Text label="Enlace (https://…)" type="url" max={500} value={c.gifts?.url ?? ""} onChange={(url) => section("gifts", { url })} />
@@ -541,11 +589,12 @@ export function Editor({ eventId, eventType, initial, publicPath, isPublished }:
 
         <Panel title="Hospedaje" enabled={lodging.enabled} onToggle={toggle("lodging")}>
           <List items={lodging.items} max={10} addLabel="Agregar hotel" onChange={(items) => section("lodging", { items })}
-            blank={{ name: "", address: "" }}
+            blank={{ name: "", address: "", map_query: "" }}
             render={(h, patch) => (
               <div className="adm-grid">
                 <Text label="Hotel" max={120} value={h.name} onChange={(name) => patch({ name })} />
                 <Text label="Dirección / distancia" max={200} value={h.address} onChange={(address) => patch({ address })} />
+                <Text label="Búsqueda o enlace de Google Maps" max={600} value={h.map_query ?? ""} placeholder="Nombre del hotel + ciudad, o pega el enlace de Maps" onChange={(map_query) => patch({ map_query })} />
               </div>
             )} />
         </Panel>
@@ -590,28 +639,23 @@ export function Editor({ eventId, eventType, initial, publicPath, isPublished }:
               <option value="volcanes-colima">Volcanes de Colima</option>
             </select>
           </label>
-          {(["light", "dark"] as const).map((mode) => (
-            <div key={mode}>
-              <p className="adm-hint">{mode === "light" ? "Modo claro" : "Modo oscuro (si el dispositivo lo usa)"}</p>
-              <div className="ed-colors">
-                {COLOR_LABELS.map(([key, label]) => (
-                  <label key={key} className="ed-color">
-                    <input type="color" value={palette(mode)[key] ?? "#000000"} onChange={(e) => setColor(mode, key, e.target.value)} />
-                    {label}
-                  </label>
-                ))}
-              </div>
-            </div>
-          ))}
-          <button type="button" className="adm-btn adm-ghost" onClick={() => setState((s) => ({ ...s, theme: { ...s.theme, light: DEFAULT_THEME.light, dark: DEFAULT_THEME.dark } }))}>
+          <div className="ed-colors">
+            {COLOR_LABELS.map(([key, label]) => (
+              <label key={key} className="ed-color">
+                <input type="color" value={palette()[key] ?? "#000000"} onChange={(e) => setColor(key, e.target.value)} />
+                {label}
+              </label>
+            ))}
+          </div>
+          <button type="button" className="adm-btn adm-ghost" onClick={() => setState((s) => ({ ...s, theme: { ...s.theme, light: DEFAULT_THEME.light } }))}>
             Restablecer colores
           </button>
         </Panel>
       </div>
 
       <aside className="ed-preview" aria-label="Vista previa">
-        <iframe key={previewKey} src={`/app/${eventId}/vista-previa`} title="Vista previa de la invitación" />
-        <p className="adm-hint">Muestra la última versión guardada.</p>
+        <iframe ref={frame} key={previewKey} src={`/app/${eventId}/vista-previa`} title="Vista previa de la invitación" />
+        <p className="adm-hint">Se actualiza al escribir. Los cambios no se guardan hasta que pulses Guardar.</p>
       </aside>
     </div>
   );

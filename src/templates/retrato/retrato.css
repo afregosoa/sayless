@@ -1,0 +1,150 @@
+/* Plantilla "Retrato": foto a pantalla completa con los nombres encimados. Usa solo los colores del tema (paper, ink, muted, accent, line, card). */
+.t-retrato{background:var(--paper);font-family:var(--tpl-body,var(--body))}
+.t-retrato h1,.t-retrato h2,.t-retrato h3{font-family:var(--tpl-display,var(--display))}
+
+/* Frases en la fuente script: un solo lugar para cambiar su tipo de letra (--tpl-script, en fonts.ts) */
+.t-retrato .rt-kicker,.t-retrato .rt-head h2,.t-retrato .rt-head h2 em{font-family:var(--tpl-script,var(--tpl-display)),cursive;font-style:normal;font-weight:400;text-transform:none;letter-spacing:0}
+
+/* ── Portada ── */
+.rt-hero{position:relative;min-height:100svh;display:flex;align-items:flex-end;justify-content:center;text-align:center;background:var(--accent);color:#fff;overflow:hidden}
+.rt-hero-img{object-fit:cover}
+.rt-hero.has-photo::after{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(to top,rgba(0,0,0,.72) 0%,rgba(0,0,0,.25) 55%,rgba(0,0,0,.3) 100%)}
+.rt-top{margin:0 0 14px;text-align:center;font-family:var(--tpl-top,var(--tpl-display,var(--display))),var(--tpl-display,var(--display)),serif;font-weight:400;font-size:clamp(11px,2.9vw,16px);line-height:1.2;letter-spacing:.12em;text-transform:none;text-shadow:0 2px 18px rgba(0,0,0,.45)}
+.rt-hero-in{position:relative;z-index:2;width:100%;max-width:900px;padding:80px 20px 88px;display:flex;flex-direction:column;align-items:center}
+.rt-names{font-family:var(--tpl-names,var(--tpl-display,var(--display))),cursive!important;font-weight:400!important;text-transform:none;font-size:clamp(48px,15vw,112px);line-height:1;letter-spacing:0!important;margin:0!important;text-shadow:0 2px 30px rgba(0,0,0,.35)}
+.rt-names span{display:block}
+/* Entrada de la portada: del desenfoque a la nitidez, por capas */
+.rt-top,.rt-names span,.rt-date,.rt-place{animation:rt-focus 1.7s ease-out both}
+.rt-top{animation-delay:.2s}
+.rt-names span:nth-child(1){animation-delay:.5s}.rt-names span:nth-child(2){animation-delay:.7s}.rt-names span:nth-child(3){animation-delay:.9s}
+.rt-date{animation-delay:1.4s}.rt-place{animation-delay:1.6s}
+/* Botones y flecha de la portada: misma entrada. "backwards" (no "both") para no pisar el hover al terminar */
+.rt-hero .mp-pill,.rt-hero .rt-btn,.rt-scroll{animation:rt-focus 1.7s ease-out backwards}
+.rt-hero .mp-pill{animation-delay:1.9s}.rt-hero .rt-btn{animation-delay:2.1s}.rt-scroll{animation-delay:2.4s}
+.rt-names .rt-conn{font-size:.55em;line-height:1.1;margin-block:.05em}
+@keyframes rt-focus{from{opacity:0;filter:blur(16px);transform:scale(1.08)}to{opacity:1;filter:blur(0);transform:none}}
+.rt-kicker{margin:22px 0 0;font-size:clamp(34px,7vw,52px);line-height:1.1}
+.rt-place,.rt-date{font-family:var(--tpl-names,var(--tpl-body,var(--body))),sans-serif;font-weight:400;text-transform:none;letter-spacing:.04em;text-align:center}
+.rt-date{margin:14px 0 0;font-family:var(--tpl-date,var(--tpl-names,var(--tpl-body,var(--body)))),sans-serif;font-size:clamp(15px,3.8vw,22px);line-height:1.2}
+.rt-place{margin:6px 0 0;font-size:clamp(14px,3.4vw,20px);line-height:1.2}
+.rt-scroll{position:absolute;left:50%;bottom:22px;z-index:2;width:22px;height:36px;margin-left:-11px;border:1.5px solid currentColor;border-radius:12px;opacity:.8}
+.rt-scroll span{position:absolute;left:50%;top:7px;width:3px;height:7px;margin-left:-1.5px;border-radius:2px;background:currentColor;animation:rt-dot 1.8s ease-in-out infinite}
+@keyframes rt-dot{0%{transform:translateY(0);opacity:1}100%{transform:translateY(12px);opacity:0}}
+@media (prefers-reduced-motion:reduce){.rt-top,.rt-names span,.rt-date,.rt-place,.rt-hero .mp-pill,.rt-hero .rt-btn,.rt-scroll,.rt-scroll span{animation:none}}
+
+/* El botón de música vive dentro de la portada, sobre la foto */
+.rt-hero .mp-pill{color:#fff;border-color:#fff;margin-top:22px;background:rgba(0,0,0,.18);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.rt-hero .mp-pill:hover,.rt-hero .mp-pill.mp-on{background:#fff;color:#111}
+
+/* ── Secciones ── */
+.rt-sec{padding-block:72px;text-align:center}
+.rt-welcome{background:var(--accent);color:#fff}
+.t-retrato .rt-welcome .rt-eyebrow,.t-retrato .rt-welcome h2,.t-retrato .rt-welcome h2 em,.t-retrato .rt-welcome .rt-text,.t-retrato .rt-welcome .rt-quote{color:#fff}
+.rt-wrap{max-width:680px;margin:0 auto;padding-inline:8px}
+/* Sección con foto de fondo (Regalos): la foto cubre todo el ancho, con un degradado oscuro, y el texto pasa a blanco. */
+.rt-photo-sec{position:relative;overflow:hidden;isolation:isolate;background:#2b2f26;color:#fff;padding-block:96px}
+.rt-sec-img{object-fit:cover;z-index:-2}
+.rt-photo-sec .rt-wrap{padding-inline:26px}
+.rt-photo-sec::before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(0,0,0,.4),rgba(0,0,0,.66))}
+.t-retrato .rt-photo-sec :is(.rt-eyebrow,h2,h2 em,.rt-text,.rt-quote){color:#fff}
+.rt-head{margin-bottom:28px}
+.rt-eyebrow{font-size:12px;font-weight:500;letter-spacing:.3em;text-transform:uppercase;color:var(--accent);margin:0 0 10px}
+.rt-head h2{font-size:clamp(40px,9vw,60px);line-height:1.15}
+.rt-quote{font-style:italic}
+/* --script-drop baja la palabra en script para alinearla con el resto de la línea; cada fuente script necesita un valor distinto */
+.rt-head h2 em{color:var(--accent)}
+.t-retrato .rt-head h2 .rt-first{font-family:var(--tpl-story,var(--tpl-script,var(--tpl-display))),cursive}
+/* Títulos de las demás secciones: fuente de los nombres (la historia y la bienvenida tienen la suya) */
+.t-retrato .rt-sec:not(#historia):not(#itinerario):not(#bienvenida) .rt-head h2,.t-retrato .rt-sec:not(#historia):not(#itinerario):not(#bienvenida) .rt-head h2 em{font-family:var(--tpl-names,var(--tpl-script,var(--tpl-display))),cursive;text-transform:uppercase}
+.t-retrato .rt-sec:not(#historia):not(#itinerario):not(#bienvenida) .rt-head h2{font-size:clamp(30px,7vw,44px)} /* mismo tamaño que el título de la historia */
+.t-retrato .rt-head h2 .rt-alt{display:block;font-family:var(--tpl-names,var(--tpl-display,var(--display))),cursive}
+#itinerario .rt-head h2 .rt-alt{text-transform:uppercase} /* "DEL GRAN DÍA" en mayúsculas; "Itinerario" (Ballet) queda como está */
+#historia .rt-head h2,#itinerario .rt-head h2{font-size:clamp(30px,7vw,44px)} /* títulos de dos palabras (historia, itinerario): mismo tamaño que el resto */
+.rt-story+.rt-story{margin-top:1.4em}
+.rt-join-top{padding-bottom:32px}.rt-join-bottom{padding-top:0}
+.t-retrato .rt-story{font-family:var(--tpl-story-body,var(--tpl-body,var(--body))),sans-serif;font-weight:100;font-size:15px}
+.rt-text{font-size:17px;line-height:1.8;color:var(--ink);margin:0 auto;max-width:34em}
+.rt-quote{margin:28px auto 0;max-width:30em;font-family:var(--tpl-display,var(--display));font-size:22px;line-height:1.5;color:var(--muted)}
+.rt-note{margin-top:18px!important;font-size:12px;font-weight:500;letter-spacing:.22em;text-transform:uppercase;color:var(--muted)}
+.rt-label{font-size:11px;font-weight:500;letter-spacing:.26em;text-transform:uppercase;color:var(--muted);margin:0}
+
+.rt-cd{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;max-width:520px;margin:0 auto}
+.rt-cd div{display:flex;flex-direction:column;align-items:center;min-width:0;padding-block:14px;border-top:1px solid var(--accent);border-bottom:1px solid var(--accent)}
+.rt-cd b{font-family:var(--tpl-display,var(--display));font-weight:400;font-size:clamp(34px,10vw,56px);line-height:1;font-variant-numeric:lining-nums tabular-nums}
+.rt-cd small{margin-top:6px;font-size:10px;font-weight:500;letter-spacing:.22em;text-transform:uppercase;color:var(--muted)}
+
+.t-retrato .rt-btn{display:inline-flex;align-items:center;justify-content:center;min-height:46px;margin-top:26px;padding:0 28px;border:1px solid var(--accent);border-radius:999px;background:transparent;color:var(--ink);font:inherit;font-size:11px;font-weight:500;letter-spacing:.24em;text-transform:uppercase;text-decoration:none;cursor:pointer;transition:background .25s,color .25s}
+.t-retrato .rt-btn:hover{background:var(--accent);color:var(--paper)}
+.t-retrato .rt-btn-light{border-color:#fff;color:#fff}
+.t-retrato .rt-btn-light:hover{background:#fff;color:#111}
+
+/* ── Galería ── */
+.rt-gallery{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:12px;scrollbar-width:thin;text-align:left}
+.rt-gallery li{flex:0 0 min(72vw,300px);scroll-snap-align:center;overflow:hidden;background:var(--card)}
+.rt-gallery img{width:100%;aspect-ratio:4/5;object-fit:cover;display:block}
+
+/* ── Itinerario: hora | línea | actividad ── */
+.rt-schedule{position:relative;list-style:none;margin:0 auto;padding:0;max-width:440px;text-align:left}
+/* Un solo trazo: una línea fina vertical al centro de la página, con un punto por actividad; la hora queda a la izquierda de la línea y la actividad a la derecha. */
+.rt-schedule::before,.rt-schedule::after{content:"";position:absolute;left:47%;top:0;width:1px}
+.rt-schedule::before{bottom:0;background:var(--line)}
+/* La línea que se dibuja encima (su largo lo fija schedule.tsx con --draw al desplazarse). */
+.rt-schedule::after{height:var(--draw,0px);background:var(--accent);opacity:.75}
+.rt-schedule li{position:relative;margin-left:47%;padding:11px 0 11px 22px}
+.rt-schedule li::before{content:"";position:absolute;left:-3px;top:21px;width:5px;height:5px;border-radius:50%;background:var(--accent)}
+.rt-schedule .rt-time{position:absolute;right:calc(100% + 20px);top:12px;margin:0;white-space:nowrap;font-family:var(--tpl-date,var(--tpl-names,var(--tpl-body,var(--body)))),sans-serif;font-weight:400;font-size:19px;line-height:1.2;color:var(--accent)}
+.rt-schedule li>span:last-child{font-family:var(--tpl-story-body,var(--tpl-body,var(--body))),sans-serif;font-weight:100;font-size:15px;line-height:1.6;color:var(--ink)}
+/* Entrada de cada actividad cuando la línea llega a ella (solo con JavaScript y sin "reducir movimiento"). */
+.rt-schedule[data-anim] .rt-time,.rt-schedule[data-anim] li>span:last-child{opacity:0;filter:blur(14px);transform:scale(1.07);transition:opacity .9s ease-out,filter .9s ease-out,transform .9s ease-out}
+.rt-schedule[data-anim] .rt-time{transition-delay:.1s}.rt-schedule[data-anim] li>span:last-child{transition-delay:.2s}
+.rt-schedule[data-anim] li.on .rt-time,.rt-schedule[data-anim] li.on>span:last-child{opacity:1;filter:blur(0);transform:none}
+.rt-schedule[data-anim] li::before{transform:scale(0);transition:transform .45s cubic-bezier(.3,1.6,.5,1)}
+.rt-schedule[data-anim] li.on::before{transform:scale(1)}
+
+/* ── Lugares, itinerario ── */
+.rt-list{display:grid;gap:22px}
+.rt-list li{padding:28px 20px;background:var(--card);border:1px solid var(--line)}
+/* Lugar con foto de fondo: la foto cubre la tarjeta con un degradado oscuro y el texto pasa a blanco. */
+.rt-list li.rt-has-bg{position:relative;overflow:hidden;isolation:isolate;padding:44px 22px;border-color:transparent;color:#fff;background:#2b2f26}
+.rt-venue-img{object-fit:cover;z-index:-2}
+.rt-list li.rt-has-bg::before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(0,0,0,.32),rgba(0,0,0,.68))}
+.t-retrato .rt-list li.rt-has-bg :is(.rt-label,.rt-addr){color:rgba(255,255,255,.85)}
+.t-retrato .rt-list li.rt-has-bg :is(h3,.rt-time){color:#fff}
+.t-retrato .rt-list li.rt-has-bg .rt-link{color:#fff;border-bottom-color:#fff}
+/* Solo en la vista previa del editor: capa para arrastrar la foto y botones de zoom. */
+.rt-venue-edit{position:absolute;inset:0;z-index:3;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;outline:2px dashed transparent;outline-offset:-6px;transition:outline-color .2s}
+.rt-venue-edit:hover{outline-color:rgba(255,255,255,.7)}
+.rt-venue-edit:active{cursor:grabbing}
+.rt-venue-hint{position:absolute;left:50%;top:10px;transform:translateX(-50%);padding:4px 10px;border-radius:99px;background:rgba(0,0,0,.55);color:#fff;font-size:11px;letter-spacing:.04em;white-space:nowrap;opacity:0;transition:opacity .2s;pointer-events:none}
+.rt-venue-edit:hover .rt-venue-hint{opacity:1}
+.rt-venue-zoom{position:absolute;right:10px;bottom:10px;display:flex;align-items:center;gap:2px;padding:3px;border-radius:99px;background:rgba(0,0,0,.6);color:#fff;cursor:default}
+.rt-venue-zoom button{width:28px;height:28px;border:0;border-radius:50%;background:transparent;color:#fff;font-size:18px;line-height:1;cursor:pointer}
+.rt-venue-zoom button:hover:not(:disabled){background:rgba(255,255,255,.2)}
+.rt-venue-zoom button:disabled{opacity:.35;cursor:default}
+.rt-venue-zoom output{min-width:42px;text-align:center;font-size:12px}
+.rt-list h3{font-weight:500;font-size:28px;line-height:1.15;margin-top:6px}
+/* Nombre del lugar: la fuente de los nombres de la portada y de los títulos de sección. */
+.t-retrato .rt-list h3{font-family:var(--tpl-names,var(--tpl-body,var(--body))),sans-serif;font-weight:400;font-size:clamp(28px,7vw,34px);letter-spacing:.01em}
+.rt-time{font-family:var(--tpl-date,var(--tpl-names,var(--tpl-body,var(--body)))),sans-serif;font-size:22px;color:var(--accent);margin:8px 0 0}
+.rt-addr{color:var(--muted);margin:6px 0 0}
+.rt-link{display:inline-block;margin-top:14px;font-size:11px;font-weight:500;letter-spacing:.22em;text-transform:uppercase;text-decoration:none;border-bottom:1px solid var(--accent)}
+
+/* ── Confirmación ── */
+.rt-rsvp{text-align:left}
+.t-retrato .rsvp{background:var(--card);border:1px solid var(--line);padding:30px 20px;border-radius:0}
+.t-retrato .rsvp .btn:not(.ghost){background:var(--accent);border-color:var(--accent);color:var(--paper);border-radius:999px}
+.t-retrato .rsvp .btn.ghost,.t-retrato .rsvp .choice button{border-radius:999px}
+.t-retrato .rsvp .choice button[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:var(--paper)}
+
+/* ── Preguntas ── */
+.rt-faq-list{text-align:left}
+.rt-faq{border-top:1px solid var(--line)!important;padding-block:18px!important}
+.rt-faq:last-child{border-bottom:1px solid var(--line)!important}
+.rt-faq summary{display:flex!important;justify-content:space-between;gap:16px;cursor:pointer;font-family:var(--tpl-names,var(--tpl-body,var(--body))),sans-serif;font-weight:400;font-size:clamp(18px,4.6vw,21px);line-height:1.25}
+.rt-faq summary::after{content:"+"!important;color:var(--accent);font-size:22px;line-height:1}
+.rt-faq[open] summary::after{content:"–"!important}
+.rt-faq p{margin-top:10px!important;color:var(--ink);font-family:var(--tpl-story-body,var(--tpl-body,var(--body))),sans-serif;font-weight:100;font-size:14px;line-height:1.65}
+
+.rt-footer{background:var(--ink);color:var(--paper);padding:64px 16px 44px;text-align:center}
+.rt-mono{font-family:var(--tpl-display,var(--display));font-weight:300;font-size:clamp(52px,16vw,120px);line-height:1;letter-spacing:.08em;color:var(--accent);margin:0 0 16px!important}
+.rt-footer .rt-label{color:color-mix(in srgb,var(--paper) 65%,var(--ink))}

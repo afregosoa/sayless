@@ -13,7 +13,23 @@ export function Lines({ text }: { text: string }) {
   ));
 }
 
-export const mapsHref = (query: string) => `https://www.google.com/maps/search/?${new URLSearchParams({ api: "1", query })}`;
+// Enlaces de Google Maps (incluidos los cortos al compartir): se abren tal cual en lugar de buscarlos.
+const MAPS_HOSTS = /^(www\.)?(google\.[a-z.]+|maps\.google\.[a-z.]+|maps\.app\.goo\.gl|goo\.gl|g\.page)$/i;
+function mapsLink(text: string): string | null {
+  try {
+    const u = new URL(text.trim());
+    if (u.protocol !== "https:" && u.protocol !== "http:") return null;
+    if (!MAPS_HOSTS.test(u.hostname)) return null;
+    // google.com/algo solo cuenta si es /maps...; los cortos (goo.gl, g.page, maps.app.goo.gl) se aceptan completos.
+    if (/^(www\.)?google\./i.test(u.hostname) && !u.pathname.startsWith("/maps")) return null;
+    return u.toString();
+  } catch {
+    return null;
+  }
+}
+
+export const mapsHref = (query: string) =>
+  mapsLink(query) ?? `https://www.google.com/maps/search/?${new URLSearchParams({ api: "1", query })}`;
 
 /** Foto de portada (o la de muestra en el catálogo). */
 export const heroImage = (event: TemplateProps["event"]) =>
@@ -28,8 +44,8 @@ export const galleryImages = (event: TemplateProps["event"]): { src: string; alt
 /** Título público de la invitación en una sola línea (sin saltos). */
 export const flatTitle = (event: TemplateProps["event"]) => (event.content.hero.title || event.title).replace(/\s*\n\s*/g, " ").trim();
 
-/** Reproductor de música (si el evento tiene). `cover` apaga la pantalla de apertura propia, para plantillas con su propia apertura. */
-export function MusicSlot({ event, preview, cover }: { event: TemplateProps["event"]; preview?: boolean; cover?: boolean }) {
+/** Reproductor de música (si el evento tiene). `cover` apaga la pantalla de apertura propia, para plantillas con su propia apertura. `autoOnScroll` empieza la canción al desplazarse (sujeto a lo que permita el navegador). */
+export function MusicSlot({ event, preview, cover, autoOnScroll }: { event: TemplateProps["event"]; preview?: boolean; cover?: boolean; autoOnScroll?: boolean }) {
   const m = event.content.music;
   if (!on(m) || !m.path) return null;
   return (
@@ -42,6 +58,7 @@ export function MusicSlot({ event, preview, cover }: { event: TemplateProps["eve
       end={m.end}
       eventTitle={event.content.hero.title || event.title}
       preview={preview}
+      autoOnScroll={autoOnScroll}
     />
   );
 }

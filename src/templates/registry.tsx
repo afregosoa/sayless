@@ -2,6 +2,7 @@ import type { ReactElement } from "react";
 import { Editorial } from "./editorial";
 import { Jardin } from "./jardin/jardin";
 import { Moderno } from "./moderno/moderno";
+import { Retrato } from "./retrato/retrato";
 import { Sobre } from "./sobre/sobre";
 import type { TemplateId } from "./catalog";
 import type { TemplateProps } from "./types";
@@ -12,4 +13,5 @@ export const TEMPLATE_COMPONENTS: Record<TemplateId, (props: TemplateProps) => R
   sobre: Sobre,
   jardin: Jardin,
   moderno: Moderno,
+  retrato: Retrato,
 };

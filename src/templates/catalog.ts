@@ -3,7 +3,7 @@
 import type { EventType } from "@/lib/event-starter";
 import type { EventTheme } from "@/lib/event-content";
 
-export const TEMPLATE_IDS = ["editorial", "sobre", "jardin", "moderno"] as const;
+export const TEMPLATE_IDS = ["editorial", "sobre", "jardin", "moderno", "retrato"] as const;
 export type TemplateId = (typeof TEMPLATE_IDS)[number];
 
 export type TemplateInfo = {
@@ -17,7 +17,7 @@ export type TemplateInfo = {
   traits: string[];
 };
 
-const palette = (light: Record<string, string>, dark: Record<string, string>): EventTheme => ({ light, dark });
+const palette = (light: Record<string, string>): EventTheme => ({ light });
 
 export const TEMPLATES: Record<TemplateId, TemplateInfo> = {
   editorial: {
@@ -30,7 +30,6 @@ export const TEMPLATES: Record<TemplateId, TemplateInfo> = {
       hero_art: "volcanes-colima",
       ...palette(
         { paper: "#ECEBE4", ink: "#22241F", muted: "#62655B", accent: "#55623F", line: "#CBCBBF", card: "#E3E2D9" },
-        { paper: "#161814", ink: "#E9E8E0", muted: "#A5A89C", accent: "#AFBD93", line: "#34372F", card: "#1E211B" },
       ),
     },
   },
@@ -42,7 +41,6 @@ export const TEMPLATES: Record<TemplateId, TemplateInfo> = {
     traits: ["Animación de sobre", "Dorado y rosa", "Caligrafía romántica"],
     theme: palette(
       { paper: "#F6EFE6", ink: "#3B2C2C", muted: "#8A766D", accent: "#A9824A", line: "#E2D3C1", card: "#FBF6EF" },
-      { paper: "#1E1816", ink: "#F1E7DC", muted: "#B9A79B", accent: "#D6B26E", line: "#3A302B", card: "#271F1C" },
     ),
   },
   jardin: {
@@ -53,7 +51,6 @@ export const TEMPLATES: Record<TemplateId, TemplateInfo> = {
     traits: ["Ilustración botánica", "Fotos en arco", "Verde salvia"],
     theme: palette(
       { paper: "#F3F0E8", ink: "#2B3A2E", muted: "#6B7A6C", accent: "#5E8A68", line: "#D5D9CB", card: "#E9EDE1" },
-      { paper: "#131A15", ink: "#E8EEE4", muted: "#9FB0A0", accent: "#8DBB98", line: "#2A372D", card: "#1B251E" },
     ),
   },
   moderno: {
@@ -64,7 +61,16 @@ export const TEMPLATES: Record<TemplateId, TemplateInfo> = {
     traits: ["Portada a pantalla completa", "Secciones numeradas", "Naranja vivo"],
     theme: palette(
       { paper: "#FAFAF7", ink: "#111111", muted: "#6A6A66", accent: "#FF4F1F", line: "#DADAD4", card: "#F0F0EA" },
-      { paper: "#0E0E0E", ink: "#F4F4F0", muted: "#9A9A94", accent: "#FF6B3D", line: "#2A2A28", card: "#181817" },
+    ),
+  },
+  retrato: {
+    id: "retrato",
+    name: "Retrato",
+    tagline: "La foto de los novios a pantalla completa, con sus nombres encimados",
+    eventTypes: ["boda"],
+    traits: ["Portada con foto", "Nombres grandes encimados", "Verde salvia"],
+    theme: palette(
+      { paper: "#F3F5F0", ink: "#363739", muted: "#707173", accent: "#667050", line: "#D7D2C6", card: "#EEEEE6" },
     ),
   },
 };
